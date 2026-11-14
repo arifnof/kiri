@@ -44,6 +44,7 @@ mod lastlogs;
 mod logins;
 mod weblogin;
 mod needs;
+mod remote;
 mod sharing;
 mod usage;
 
@@ -225,6 +226,7 @@ fn engine(rx: Receiver<Cmd>, tx: Sender<Cmd>) {
             op
         });
         match cmd {
+            Ok(Cmd::Start | Cmd::Connect) if remote::current().is_some() => refresh(&mut connected),
             Ok(Cmd::Start) => {
                 emit(state("booting", None));
                 match ensure_daemon().and_then(|()| expect_ok(client::request("POST", "/kiri/wake", None))) {
@@ -342,8 +344,17 @@ fn engine(rx: Receiver<Cmd>, tx: Sender<Cmd>) {
                 refresh(&mut connected);
             }
             Ok(Cmd::RemoveNetwork(id)) => act("rmnet", expect_ok(client::request("DELETE", &format!("/networks/{id}"), None))),
-            Ok(Cmd::Quit) | Err(RecvTimeoutError::Disconnected) => return,
+            Ok(Cmd::Quit) | Err(RecvTimeoutError::Disconnected) => {
+                remote::disconnect();
+                return;
+            }
             Err(RecvTimeoutError::Timeout) => {
+                // A server's connection that dropped: back on Kiri, saying why.
+                if let Some(why) = remote::check() {
+                    emit(notice("error", &why));
+                    emit(remote::event(None));
+                    refresh(&mut connected);
+                }
                 vm_panel(&mut connected);
                 if connected && LISTED.lock().unwrap_or_else(|e| e.into_inner()).elapsed() >= LIST_EVERY {
                     refresh(&mut connected);
@@ -954,6 +965,10 @@ fn ensure_daemon() -> io::Result<()> {
     if client::alive() {
         return Ok(());
     }
+    // On a server, Kiri's engine is not the one to start.
+    if let Some(s) = remote::current() {
+        return Err(io::Error::other(format!("{} isn't answering", s.name)));
+    }
     // Linux: the engine is a system service, started by systemd, not by the window.
     #[cfg(target_os = "linux")]
     return Err(linux::engine_down());
@@ -982,12 +997,30 @@ fn ensure_daemon() -> io::Result<()> {
     Err(io::Error::other(format!("kiri daemon did not start; see {}", log_dir.join("daemon.log").display())))
 }
 
+/// The engine the window is on, as the page names it: a server's bookmark
+/// id, or null for Kiri. Lists carry it, so ones read from the engine the
+/// window just left are never shown as the new one's.
+fn engine_id() -> serde_json::Value {
+    remote::current().map(|s| s.id).into()
+}
+
+/// The Builds view's history, from the engine the window is on.
+fn builds_event() -> String {
+    let server = engine_id();
+    match crate::builds::list() {
+        Ok(b) => serde_json::json!({"type": "builds", "builds": b, "server": server}),
+        Err(e) => serde_json::json!({"type": "builds", "error": e.to_string(), "server": server}),
+    }
+    .to_string()
+}
+
 /// Sends the page every list, from the daemon.
 /// When the lists last went to the page, by any route.
 static LISTED: std::sync::LazyLock<std::sync::Mutex<std::time::Instant>> = std::sync::LazyLock::new(|| std::sync::Mutex::new(std::time::Instant::now()));
 
 fn refresh(connected: &mut bool) {
     *LISTED.lock().unwrap_or_else(|e| e.into_inner()) = std::time::Instant::now();
+    let server = remote::current();
     let lists = (|| -> io::Result<serde_json::Value> {
         let containers = client::get_background("/containers/json?all=1")?;
         let images = client::get_background("/images/json")?;
@@ -1004,7 +1037,7 @@ fn refresh(connected: &mut bool) {
         };
         let containers = add_icon(containers, &|c| c["Image"].as_str().unwrap_or_default().to_owned());
         let images = add_icon(images, &|i| i["RepoTags"][0].as_str().unwrap_or_default().to_owned());
-        Ok(serde_json::json!({"type": "lists", "containers": containers, "images": images, "volumes": volumes["Volumes"], "networks": networks}))
+        Ok(serde_json::json!({"type": "lists", "server": server.as_ref().map(|s| s.id.clone()), "containers": containers, "images": images, "volumes": volumes["Volumes"], "networks": networks}))
     })();
     match lists {
         Ok(v) => {
@@ -1017,6 +1050,10 @@ fn refresh(connected: &mut bool) {
                 .collect();
             emit(v.to_string());
             vm_panel(connected);
+        }
+        // A server that didn't answer is not Kiri stopping: the page says so.
+        Err(e) if let Some(s) = server => {
+            emit(serde_json::json!({"type": "listerror", "server": s.id, "error": e.to_string()}).to_string());
         }
         Err(_) => {
             *connected = false;
@@ -1043,6 +1080,26 @@ fn engine_stopped() -> bool {
 /// The sidebar's VM panel: awake, asleep (wakes on the next request) or
 /// stopped (off until Start), and memory.
 fn vm_panel(connected: &mut bool) {
+    // On a server: its Docker's figures, and it's up while the connection is.
+    if remote::current().is_some() {
+        if let Ok(info) = client::get_background("/info") {
+            *connected = true;
+            emit(serde_json::json!({
+                "type": "vm",
+                "remote": true,
+                "awake": true,
+                "running": info["ContainersRunning"],
+                "cpus": info["NCPU"],
+                "ceiling_mib": info["MemTotal"].as_u64().unwrap_or(0) >> 20,
+                "used_mib": 0,
+                "target_mib": 0,
+                "os": info["OperatingSystem"],
+                "version": info["ServerVersion"],
+            }).to_string());
+            emit(state("running", None));
+        }
+        return;
+    }
     match client::get_background("/info") {
         Ok(info) => {
             *connected = true;
@@ -1416,6 +1473,50 @@ fn handle(text: &str, tx: &Sender<Cmd>, autostart: bool, view: Option<&str>) {
     };
     let _ = match msg.cmd.as_str() {
         "start" => tx.send(Cmd::Start),
+        // Servers: Docker on other machines over SSH (remote.rs).
+        "servers" => {
+            emit(remote::event(None));
+            Ok(())
+        }
+        "serversave" => {
+            let id = msg.value["id"].as_str().unwrap_or("").to_owned();
+            match remote::upsert(&msg.value) {
+                Ok(s) => {
+                    emit(serde_json::json!({"type": "serversaved", "id": s.id}).to_string());
+                    emit(remote::event(None));
+                }
+                Err(e) => emit(remote::event(Some((if id.is_empty() { "new" } else { &id }, &e.to_string())))),
+            }
+            Ok(())
+        }
+        "serverdelete" => {
+            let was = remote::current().is_some_and(|s| s.id == msg.id);
+            if let Err(e) = remote::remove(&msg.id) {
+                emit(notice("error", &e.to_string()));
+            }
+            emit(remote::event(None));
+            if was { tx.send(Cmd::Refresh) } else { Ok(()) }
+        }
+        "serverconnect" => {
+            let (id, password, tx) = (msg.id, msg.value.as_str().map(str::to_owned), tx.clone());
+            std::thread::spawn(move || {
+                let _op = diag::enter_op(diag::new_op("connect"));
+                emit(serde_json::json!({"type": "servers", "servers": remote::load(), "current": remote::current().map(|s| s.id), "connecting": id}).to_string());
+                let result = remote::connect(&id, password);
+                match &result {
+                    Ok(s) => emit(notice("ok", &trf("Connected to {name}", &[("name", &s.name)]))),
+                    Err(e) => diag::warn!("server not reached", error = e),
+                }
+                emit(remote::event(result.as_ref().err().map(|e| (id.as_str(), e.to_string())).as_ref().map(|(i, e)| (*i, e.as_str()))));
+                let _ = tx.send(Cmd::Refresh);
+            });
+            Ok(())
+        }
+        "serverdisconnect" => {
+            remote::disconnect();
+            emit(remote::event(None));
+            tx.send(Cmd::Connect)
+        }
         "stop" => tx.send(Cmd::Stop),
         "refresh" => tx.send(Cmd::Refresh),
         "pull" => {
@@ -1555,10 +1656,7 @@ fn handle(text: &str, tx: &Sender<Cmd>, autostart: bool, view: Option<&str>) {
         // The Builds view: BuildKit's history, read only while the view is open.
         "builds" => {
             std::thread::spawn(|| {
-                emit(match crate::builds::list() {
-                    Ok(b) => serde_json::json!({"type": "builds", "builds": b}),
-                    Err(e) => serde_json::json!({"type": "builds", "error": e.to_string()}),
-                }.to_string())
+                emit(builds_event())
             });
             Ok(())
         }
@@ -1754,10 +1852,7 @@ fn handle(text: &str, tx: &Sender<Cmd>, autostart: bool, view: Option<&str>) {
                 if let Err(e) = crate::builds::remove(&builder, &id) {
                     emit(notice("error", &trf("Couldn't remove the build: {error}", &[("error", &e)])));
                 }
-                emit(match crate::builds::list() {
-                    Ok(b) => serde_json::json!({"type": "builds", "builds": b}),
-                    Err(e) => serde_json::json!({"type": "builds", "error": e.to_string()}),
-                }.to_string())
+                emit(builds_event())
             });
             Ok(())
         }
@@ -1972,7 +2067,7 @@ fn handle(text: &str, tx: &Sender<Cmd>, autostart: bool, view: Option<&str>) {
         }
         // Only the container's own addresses: a page cannot open arbitrary URLs.
         "open" => {
-            let local = msg.name.strip_prefix("http://").or_else(|| msg.name.strip_prefix("https://")).and_then(|r| r.split(['/', ':']).next()).is_some_and(|h| h == "localhost" || h.ends_with(".kiri.localhost") || h.ends_with(".kiri.local"));
+            let local = msg.name.strip_prefix("http://").or_else(|| msg.name.strip_prefix("https://")).and_then(|r| r.split(['/', ':']).next()).is_some_and(|h| h == "localhost" || h.ends_with(".kiri.localhost") || h.ends_with(".kiri.local") || remote::current().is_some_and(|s| s.host == h));
             // A build warning's rule page (docs.docker.com/go/dockerfile/rule/…).
             let docs = msg.name.strip_prefix("https://docs.docker.com/go/").is_some_and(|rest| rest.bytes().all(|b| b.is_ascii_alphanumeric() || b"-/".contains(&b)));
             if local || docs || msg.name == "https://runkiri.com" || msg.name == "https://runkiri.com/share/notice" || msg.name == "https://canestack.com" || msg.name == "https://github.com/libracoder/kiri/issues/new" || msg.name == "https://github.com/libracoder/kiri" || msg.name == "https://github.com/anchore/grype" || msg.name == "https://login.docker.com/activate" || msg.name == "https://github.com/login/device" {
@@ -2128,6 +2223,8 @@ fn handle(text: &str, tx: &Sender<Cmd>, autostart: bool, view: Option<&str>) {
                     return;
                 }
             }
+            // The servers bookmarked, for the sidebar.
+            emit(remote::event(None));
             let _ = tx.send(Cmd::Refresh);
             // Opening the window reaches the engine (starting its service if it
             // isn't running) but doesn't wake it: asleep, it reads Ready, and the

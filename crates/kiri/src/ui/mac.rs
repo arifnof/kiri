@@ -285,6 +285,20 @@ fn main_menu(mtm: MainThreadMarker) -> Retained<NSMenu> {
     app_menu.addItem(&item(&app("Quit {app}"), sel!(terminate:), "q"));
     let app_item = NSMenuItem::new(mtm);
     app_item.setSubmenu(Some(&app_menu));
+    // Edit: without it AppKit has no ⌘C/⌘V/⌘X/⌘A/⌘Z to hand the web view,
+    // and text fields (a server's password, a registry token) can't be pasted
+    // into. The page sees each key first: the terminal keeps its own ⌘C/⌘V.
+    let edit_menu = NSMenu::new(mtm);
+    edit_menu.setTitle(&NSString::from_str(&tr("Edit")));
+    edit_menu.addItem(&item(&tr("Undo"), sel!(undo:), "z"));
+    edit_menu.addItem(&item(&tr("Redo"), sel!(redo:), "Z"));
+    edit_menu.addItem(&NSMenuItem::separatorItem(mtm));
+    edit_menu.addItem(&item(&tr("Cut"), sel!(cut:), "x"));
+    edit_menu.addItem(&item(&tr("Copy"), sel!(copy:), "c"));
+    edit_menu.addItem(&item(&tr("Paste"), sel!(paste:), "v"));
+    edit_menu.addItem(&item(&tr("Select All"), sel!(selectAll:), "a"));
+    let edit_item = NSMenuItem::new(mtm);
+    edit_item.setSubmenu(Some(&edit_menu));
     // View: ⌘+ / ⌘− / ⌘0 step the text size Settings → Appearance sets.
     let view_menu = NSMenu::new(mtm);
     view_menu.setTitle(&NSString::from_str(&tr("View")));
@@ -295,6 +309,7 @@ fn main_menu(mtm: MainThreadMarker) -> Retained<NSMenu> {
     view_item.setSubmenu(Some(&view_menu));
     let bar = NSMenu::new(mtm);
     bar.addItem(&app_item);
+    bar.addItem(&edit_item);
     bar.addItem(&view_item);
     bar
 }

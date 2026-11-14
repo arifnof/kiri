@@ -23,7 +23,12 @@ fn buildx(args: &[&str]) -> io::Result<(String, String)> {
     // No console window flashing up from Kiri's window on Windows.
     #[cfg(windows)]
     std::os::windows::process::CommandExt::creation_flags(&mut cmd, 0x0800_0000);
-    let out = cmd.args(["--context", CONTEXT.get(), "buildx"]).args(args).stdin(Stdio::null()).output()?;
+    // Kiri's context, or the server the window is on (ui/remote.rs).
+    match crate::client::target() {
+        Some(_) => cmd.args(["-H", &crate::client::docker_host()?]),
+        None => cmd.args(["--context", CONTEXT.get()]),
+    };
+    let out = cmd.arg("buildx").args(args).stdin(Stdio::null()).output()?;
     let (stdout, stderr) = (String::from_utf8_lossy(&out.stdout).into_owned(), String::from_utf8_lossy(&out.stderr).into_owned());
     if !out.status.success() {
         let msg = stderr.lines().rev().find(|l| !l.trim().is_empty()).unwrap_or("buildx failed").trim_start_matches("ERROR: ").to_owned();
@@ -43,6 +48,11 @@ fn builders() -> io::Result<Vec<String>> {
     // Without the plugin, docker reads `buildx` as an unknown command or flag.
     if buildx(&["version"]).is_err() {
         return Ok(Vec::new());
+    }
+    // A server: its own engine's builder, whose history BuildKit in its
+    // Docker keeps. Nothing is created there.
+    if crate::client::target().is_some() {
+        return Ok(vec!["default".to_owned()]);
     }
     let (out, _) = buildx(&["ls", "--format", "json"])?;
     let have: Vec<String> = crate::client::get_background("/containers/json?all=1")?

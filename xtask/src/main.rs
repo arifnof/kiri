@@ -707,6 +707,15 @@ fn verify(file: &Path, want: &str) -> io::Result<()> {
 /// target/lite/Kiri.app, without the docker CLI, Compose and buildx, which
 /// Kiri Lite downloads on first launch (src/tools.rs).
 fn app(root: &Path, arch: Arch, lite: bool) -> io::Result<PathBuf> {
+    // The guest goes into the app: say which part isn't built, and how to
+    // build it, before the two-minute host build rather than after it.
+    let flag = if arch == Arch::X86_64 { " --arch x86_64" } else { "" };
+    for (dir, file, task) in [(arch.guest_out(root)?, arch.kernel(), "kernel"), (arch.guest_out(root)?, "initramfs.cpio", "guest"), (Arch::Arm64.guest_out(root)?, "data.img", "disk")] {
+        if !dir.join(file).is_file() {
+            let flag = if task == "disk" { "" } else { flag };
+            return Err(io::Error::other(format!("{} is missing: run `cargo xtask {task}{flag}` first (kernel and disk need a running Docker engine)", dir.join(file).display())));
+        }
+    }
     host(root, arch)?;
     let version = env!("CARGO_PKG_VERSION");
     // Info.plist's versions are numbers only: a test build's 0.1.8-dev.42 is 0.1.8 there.

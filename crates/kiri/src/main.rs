@@ -98,6 +98,17 @@ usage: kiri COMMAND          docker's commands, on Kiri: kiri run, ps, exec,
        kiri raw pull <image> | raw images | raw rmi <image>...";
 
 fn main() -> ExitCode {
+    // ssh asking for the password of a server the window connects to
+    // (ui/remote.rs): the answer is in this process's environment only.
+    #[cfg(unix)]
+    if let (Ok(secret), Some(_)) = (std::env::var("KIRI_SSH_SECRET"), std::env::var_os("SSH_ASKPASS_REQUIRE")) {
+        // Only a password: never a yes to a question about the host's key.
+        if std::env::args().nth(1).is_some_and(|q| q.contains("yes/no")) {
+            return ExitCode::FAILURE;
+        }
+        println!("{secret}");
+        return ExitCode::SUCCESS;
+    }
     flavor::init();
     let args: Vec<String> = std::env::args().skip(1).collect();
     // Which process this is, for its log and crash reports.

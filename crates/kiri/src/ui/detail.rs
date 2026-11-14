@@ -206,7 +206,12 @@ pub fn terminal(name: &str) -> io::Result<()> {
         return Err(io::Error::other("not a container name"));
     }
     let docker = client::docker_cli().ok_or_else(|| io::Error::other("no docker CLI found"))?;
-    let line = format!("'{}' --context kiri exec -it {name} sh -c 'exec $(command -v bash || command -v sh)'", docker.display());
+    // The engine the window is on: Kiri's context, or a server's tunnel (remote.rs).
+    let engine = match client::target() {
+        Some(_) => format!("-H '{}'", client::docker_host()?.replace('\'', "")),
+        None => "--context kiri".to_owned(),
+    };
+    let line = format!("'{}' {engine} exec -it {name} sh -c 'exec $(command -v bash || command -v sh)'", docker.display());
     // A .command file Terminal opens, rather than scripting Terminal, which
     // would make macOS ask for permission to control it. It removes itself.
     let dir = super::state_dir().ok_or_else(|| io::Error::other("HOME is not set"))?.join("run");

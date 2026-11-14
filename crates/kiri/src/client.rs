@@ -50,8 +50,52 @@ impl Response {
     }
 }
 
-fn connect(timeout: Option<Duration>) -> io::Result<UnixStream> {
-    let s = UnixStream::connect(socket()?)?;
+/// Another machine's Docker engine the window uses instead of Kiri's: the
+/// local end of an SSH tunnel to its socket (ui/remote.rs). `None` is Kiri.
+static TARGET: std::sync::Mutex<Option<PathBuf>> = std::sync::Mutex::new(None);
+/// The `/events` connection in use, so a switch of engine can end it and
+/// the window's watcher reconnects to the new one.
+static EVENTS: std::sync::Mutex<Option<UnixStream>> = std::sync::Mutex::new(None);
+
+/// Points this process's requests at another engine's socket, or back at
+/// Kiri's (`None`). Kiri's own endpoints (`/kiri/…`: its settings, the VM)
+/// always go to Kiri.
+pub fn set_target(to: Option<PathBuf>) {
+    *TARGET.lock().unwrap_or_else(|e| e.into_inner()) = to;
+    if let Some(s) = EVENTS.lock().unwrap_or_else(|e| e.into_inner()).take() {
+        let _ = s.shutdown(std::net::Shutdown::Both);
+    }
+}
+
+/// The other engine's socket in use, if any.
+pub fn target() -> Option<PathBuf> {
+    TARGET.lock().unwrap_or_else(|e| e.into_inner()).clone()
+}
+
+/// Where a request for `path` goes.
+fn endpoint(path: &str) -> io::Result<PathBuf> {
+    match target() {
+        Some(t) if !path.starts_with("/kiri/") => Ok(t),
+        _ => socket(),
+    }
+}
+
+/// The engine the window uses, as docker's `-H` takes it.
+pub fn docker_host() -> io::Result<String> {
+    Ok(format!("unix://{}", endpoint("/")?.display()))
+}
+
+/// Whether a Docker engine answers `/_ping` at `sock`.
+pub fn ping_at(sock: &std::path::Path) -> io::Result<()> {
+    let mut s = UnixStream::connect(sock)?;
+    s.set_read_timeout(Some(Duration::from_secs(10)))?;
+    write!(s, "GET /_ping HTTP/1.1\r\nHost: kiri\r\nConnection: close\r\n\r\n")?;
+    let (status, _, _) = head(&mut BufReader::new(s))?;
+    if status == 200 { Ok(()) } else { Err(io::Error::other(format!("HTTP {status}"))) }
+}
+
+fn connect(path: &str, timeout: Option<Duration>) -> io::Result<UnixStream> {
+    let s = UnixStream::connect(endpoint(path)?)?;
     s.set_read_timeout(timeout)?;
     Ok(s)
 }
@@ -113,7 +157,7 @@ pub fn get_background(path: &str) -> io::Result<Value> {
 }
 
 fn send(method: &str, path: &str, body: Option<&Value>, extra: &str) -> io::Result<Response> {
-    let mut s = connect(Some(Duration::from_secs(120)))?;
+    let mut s = connect(path, Some(Duration::from_secs(120)))?;
     let payload = body.map(Value::to_string).unwrap_or_default();
     // The window's action this is part of, for the engine's log lines.
     let op = crate::diag::op_header();
@@ -172,7 +216,7 @@ pub fn post_lines_closable(path: &str, auth: Option<&str>, opened: impl FnOnce(&
         return Err(io::Error::new(io::ErrorKind::InvalidInput, "header contains a line break"));
     }
     let auth = auth.map(|a| format!("X-Registry-Auth: {a}\r\n")).unwrap_or_default();
-    let mut s = connect(Some(Duration::from_secs(120)))?;
+    let mut s = connect(path, Some(Duration::from_secs(120)))?;
     opened(&s);
     write!(s, "POST {path} HTTP/1.1\r\nHost: kiri\r\nConnection: close\r\n{auth}{}Content-Type: application/json\r\nContent-Length: 0\r\n\r\n", crate::diag::op_header())?;
     let mut r = BufReader::new(s);
@@ -205,7 +249,8 @@ pub fn post_lines_closable(path: &str, auth: Option<&str>, opened: impl FnOnce(&
 
 /// Calls `on_event` for each event until the connection ends or it returns false.
 pub fn events(mut on_event: impl FnMut(Value) -> bool) -> io::Result<()> {
-    let mut s = connect(None)?;
+    let mut s = connect("/events", None)?;
+    *EVENTS.lock().unwrap_or_else(|e| e.into_inner()) = s.try_clone().ok();
     write!(s, "GET /events HTTP/1.1\r\nHost: kiri\r\nX-Kiri-Background: 1\r\n\r\n")?;
     let mut r = BufReader::new(s);
     let (status, _, chunked) = head(&mut r)?;
@@ -235,7 +280,7 @@ pub struct Stream {
 
 impl Stream {
     pub fn open(path: &str) -> io::Result<Stream> {
-        let mut s = connect(None)?;
+        let mut s = connect(path, None)?;
         write!(s, "GET {path} HTTP/1.1\r\nHost: kiri\r\n\r\n")?;
         let mut reader = BufReader::new(s);
         let (status, _, chunked) = head(&mut reader)?;
@@ -263,7 +308,7 @@ pub fn exec(container: &str, cmd: &[&str]) -> io::Result<(i64, String)> {
         return Err(io::Error::other(created.error()));
     }
     let id = created.json()["Id"].as_str().unwrap_or_default().to_owned();
-    let mut s = connect(Some(Duration::from_secs(120)))?;
+    let mut s = connect("/exec", Some(Duration::from_secs(120)))?;
     let body = r#"{"Detach":false,"Tty":true}"#;
     write!(
         s,

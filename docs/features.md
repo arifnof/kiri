@@ -65,6 +65,20 @@ Apple silicon and Intel Macs (macOS 14+), Windows 10 and 11 (x86-64 and Arm, thr
   next start; `KIRI_CPUS` and `KIRI_MEMORY_MIB` override it) and local names
 - **Menu bar**: Kiri stays in the menu bar when its window closes, with the
   VM's state, running containers (click one to open it) and Start/Stop
+- **Servers over SSH** (the Mac and Linux windows): Servers in the sidebar
+  keeps bookmarks of other machines' Docker (address, user, SSH port, key
+  file, Docker's socket; saved in `~/.kiri/servers.json`, never a password).
+  Connect runs the system's `ssh`, which forwards the server's
+  `/var/run/docker.sock` to `~/.kiri/run/ssh-<id>.sock`, and Containers,
+  Images, Volumes and Networks then list and act on the server until
+  Disconnect; Kiri's own settings stay on Kiri. Signing in is a key or the
+  ssh agent (`BatchMode`), or a password asked at Connect and handed to ssh
+  through `SSH_ASKPASS`. A new host key is accepted the first time and
+  checked after (`accept-new`). The SSH user needs access to Docker on the
+  server (root, or the `docker` group). A dropped connection puts the window
+  back on Kiri and says why. Flight test against a real server:
+  `KIRI_TEST_SSH=user@host:port KIRI_TEST_SSH_KEY=… KIRI_TEST_DIR=~/.kiri-flight
+  cargo test -p kiri --bin kiri live_server -- --ignored --nocapture`
 - **Kubernetes**: `kiri k8s start` — a single-node k3s cluster in one
   container, ready in ~20 s, as the `kiri` kubectl context
 - **Linux machines**: `kiri machine create dev --distro ubuntu` and
