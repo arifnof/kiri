@@ -57,7 +57,12 @@ Apple silicon and Intel Macs (macOS 14+), Windows 10 and 11 (x86-64 and Arm, thr
 - **Memory**: a balloon gives unused memory back while running, and the VM
   sleeps after 60 s idle (the daemon stays at ~15 MB; waking takes ~0.15 s)
 - **The window**: containers, images, volumes and networks, with Compose
-  projects grouped (start, stop, restart or remove a whole project); each
+  projects grouped (start, stop, restart or remove a whole project); volumes
+  and networks show which containers use each one (a click opens it), sort
+  into In use and Unused, and Remove names what still uses one (a volume a
+  container has, or a network a running container is on, waits until it's
+  free; bulk Delete leaves those); ⌘1–⌘9 (Ctrl on Windows and Linux) move
+  between the sidebar's views; each
   container has its own page with details, live logs (find, level filter),
   a command line (and "Open in Terminal" for a full shell) and its files
   (preview, Save to Downloads, Show in Finder); Settings for fonts, text
@@ -66,19 +71,42 @@ Apple silicon and Intel Macs (macOS 14+), Windows 10 and 11 (x86-64 and Arm, thr
 - **Menu bar**: Kiri stays in the menu bar when its window closes, with the
   VM's state, running containers (click one to open it) and Start/Stop
 - **Servers over SSH** (the Mac and Linux windows): Servers in the sidebar
-  keeps bookmarks of other machines' Docker (address, user, SSH port, key
-  file, Docker's socket; saved in `~/.kiri/servers.json`, never a password).
-  Connect runs the system's `ssh`, which forwards the server's
-  `/var/run/docker.sock` to `~/.kiri/run/ssh-<id>.sock`, and Containers,
-  Images, Volumes and Networks then list and act on the server until
-  Disconnect; Kiri's own settings stay on Kiri. Signing in is a key or the
-  ssh agent (`BatchMode`), or a password asked at Connect and handed to ssh
-  through `SSH_ASKPASS`. A new host key is accepted the first time and
-  checked after (`accept-new`). The SSH user needs access to Docker on the
-  server (root, or the `docker` group). A dropped connection puts the window
-  back on Kiri and says why. Flight test against a real server:
-  `KIRI_TEST_SSH=user@host:port KIRI_TEST_SSH_KEY=… KIRI_TEST_DIR=~/.kiri-flight
-  cargo test -p kiri --bin kiri live_server -- --ignored --nocapture`
+  keeps bookmarks of other machines' Docker as cards (address, user, SSH
+  port, key file, Docker's socket; saved in `~/.kiri/servers.json`, never a
+  password), shown as cards or as a list, and the switcher atop the sidebar
+  moves the window between Kiri and any of them. Connect runs the system's `ssh`, which forwards the
+  server's `/var/run/docker.sock` to `~/.kiri/run/ssh-<id>.sock`, and
+  Containers, Images, Volumes, Networks and Builds then list and act on the
+  server until Disconnect; Kiri's own settings stay on Kiri. Test connection
+  checks a bookmark as typed without leaving the engine in use.
+  - Signing in is a key or the ssh agent (`BatchMode`), or a password handed
+    to ssh through `SSH_ASKPASS` (the eye in each password field shows it).
+    A password is asked at Connect, or kept where the person picks: the
+    system's store (the Keychain on the Mac, Secret Service through
+    `secret-tool` on Linux) or Kiri's own file, `~/.kiri/secrets.enc`,
+    sealed with AES-256-GCM under a random key in `~/.kiri/secrets.key`
+    (both readable by the account only). Deleting a bookmark forgets its
+    passwords.
+  - A server behind a bastion is reached through a jump host, as `ssh -J`
+    does (ProxyCommand with `ssh -W`), each signing in with its own key or
+    password; a failure says which of the two it was.
+  - A new host key is accepted the first time and checked after
+    (`accept-new`). The SSH user needs access to Docker on the server (root,
+    or the `docker` group). A dropped connection puts the window back on
+    Kiri and says why.
+  - Flight test against real servers: `KIRI_TEST_SSH=user@host:port
+    KIRI_TEST_SSH_KEY=… KIRI_TEST_SSH_PASSWORD=… [KIRI_TEST_JUMP=user@host:port
+    KIRI_TEST_JUMP_KEY=… KIRI_TEST_JUMP_PASSWORD=… KIRI_TEST_BEHIND=host:port]
+    KIRI_TEST_ASKPASS=target/debug/kiri KIRI_TEST_DIR=~/.kiri-ft cargo test -p
+    kiri --bin kiri live_server -- --ignored --nocapture --test-threads 1`
+- **Processes** (the Mac and Linux windows): what Kiri is doing right now
+  (pulls with their progress, starts, stops, removals, builds, connections,
+  an update's download), the processes Kiri runs on the computer (the
+  window, the engine, a server's SSH tunnel and jump host link, terminal
+  shells) with their CPU, memory and age, and, in its second tab, the
+  processes inside every running container of the engine in use (`docker
+  top`), read live while the view is open. The sidebar and the status bar
+  count the tasks under way
 - **Kubernetes**: `kiri k8s start` — a single-node k3s cluster in one
   container, ready in ~20 s, as the `kiri` kubectl context
 - **Linux machines**: `kiri machine create dev --distro ubuntu` and
@@ -86,7 +114,9 @@ Apple silicon and Intel Macs (macOS 14+), Windows 10 and 11 (x86-64 and Arm, thr
 - **The app**: `cargo xtask app` builds `Kiri.app` with the `docker` CLI,
   Compose and buildx inside; opening it runs `kiri setup` (docker context,
   LaunchAgent, build builder) and the window; `kiri update` installs new
-  releases after checking their SHA-256 and signature
+  releases after checking their SHA-256 and signature. Checking for updates
+  by itself and the GitHub star card are both off until Settings → About
+  turns them on; Check now always works
 - **Linux hosts**: the same `kiri` with no VM — the agent runs on the host's
   kernel (`cargo xtask linux`, `contrib/linux/kiri.service`); arm64 and
   x86-64; `tests/linux-host.sh` checks it. Packaged as `.deb` and `.rpm`

@@ -163,6 +163,32 @@ nav button { display: flex; align-items: center; gap: 9px; width: 100%; height: 
 nav button:hover { background: var(--row-hover); color: var(--text); }
 nav button[aria-current=page] { background: var(--raised); color: var(--text); box-shadow: inset 0 0 0 1px var(--line); }
 nav button[aria-current=page] svg { color: var(--blue); }
+/* Interaction: the page in use marked by a bar, a press you can feel, a ring
+   for the keyboard, and a short settle as a view, a dialog or a menu opens.
+   Reduced motion keeps the colours and drops the movement. */
+nav button { position: relative; transition: background-color .15s, color .15s; }
+nav button svg.i { transition: color .15s, transform .2s cubic-bezier(.2, .8, .3, 1.2); }
+nav button:hover svg.i { transform: scale(1.06); }
+body:not(.rail) nav button[aria-current=page]::before { content: ""; position: absolute; inset-inline-start: -8px; top: 7px; bottom: 7px; width: 3px; border-radius: 0 3px 3px 0; background: var(--blue); animation: navbar-in .22s cubic-bezier(.2, .8, .3, 1) both; }
+@keyframes navbar-in { from { transform: scaleY(.2); opacity: 0; } }
+nav button:focus-visible, .seg button:focus-visible, .linkbtn:focus-visible, .uchip:focus-visible, .srv-addrow:focus-visible, .srv-card.add:focus-visible { outline: 2px solid var(--blue); outline-offset: -2px; }
+.btn { transition: background-color .15s, border-color .15s, color .15s, box-shadow .15s, transform .08s; }
+.btn:active:not(:disabled) { transform: translateY(1px) scale(.985); }
+.seg button { transition: background-color .15s, color .15s; }
+.seg button:hover:not([aria-pressed="true"]):not([aria-selected="true"]) { color: var(--text); background: var(--row-hover); }
+tr.row { transition: background-color .12s; }
+#content.vin { animation: view-in .22s cubic-bezier(.2, .8, .3, 1) both; }
+@keyframes view-in { from { opacity: 0; transform: translateY(6px); } }
+.scrim { animation: scrim-in .16s ease-out both; }
+@keyframes scrim-in { from { background: rgba(0, 0, 0, 0); backdrop-filter: none; } }
+.scrim > .dialog, .scrim > form.dialog { animation: dlg-in .2s cubic-bezier(.2, .8, .3, 1.1) both; box-shadow: 0 24px 60px rgb(0 0 0 / .35), 0 2px 8px rgb(0 0 0 / .2); }
+@keyframes dlg-in { from { opacity: 0; transform: translateY(8px) scale(.97); } }
+.menu { animation: menu-in .14s cubic-bezier(.2, .8, .3, 1) both; transform-origin: top; box-shadow: 0 12px 32px rgb(0 0 0 / .28); }
+@keyframes menu-in { from { opacity: 0; transform: translateY(-4px) scale(.98); } }
+@media (prefers-reduced-motion: reduce) {
+  #content.vin, .scrim, .scrim > .dialog, .scrim > form.dialog, .menu, nav button[aria-current=page]::before { animation: none; }
+  .btn:active:not(:disabled), nav button:hover svg.i { transform: none; }
+}
 nav svg.i { width: 17px; height: 17px; }
 nav .lbl { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 nav .count { margin-inline-start: auto; font-size: var(--fs); color: var(--faint); font-variant-numeric: tabular-nums; }
@@ -463,6 +489,16 @@ td.used .off { color: var(--faint); }
 td.used .l2 { display: flex; align-items: center; gap: 6px; margin-top: 3px; color: var(--muted); font-size: var(--fs); font-variant-numeric: tabular-nums; }
 td.used .l2 span { display: inline-flex; align-items: center; gap: 4px; }
 td.used .l2 i { font-style: normal; color: var(--faint); opacity: .6; }
+/* Volumes' and Networks' Used by: a chip per container, its state's dot first. */
+td.users .uchips { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; }
+.uchip { display: inline-flex; align-items: center; gap: 5px; max-width: 160px; height: 22px; padding: 0 8px; border: 1px solid var(--line); border-radius: 999px; background: none; color: var(--text); font: 500 var(--fs-small) var(--ui-font); cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; transition: border-color .15s, background-color .15s; }
+.uchip:hover { border-color: var(--blue); background: var(--row-hover); }
+.uchip:focus-visible { outline: 2px solid var(--blue); outline-offset: 1px; }
+.uchip i { flex: none; width: 6px; height: 6px; border-radius: 50%; background: var(--faint); }
+.uchip.running i { background: var(--moss); box-shadow: 0 0 0 2px color-mix(in srgb, var(--moss) 25%, transparent); }
+.uchip.failed i { background: var(--red); }
+.umore { color: var(--muted); font-size: var(--fs-small); padding: 0 2px; cursor: default; }
+.tagpill { margin-inline-start: 8px; padding: 1px 6px; border-radius: 4px; background: var(--raised); color: var(--muted); font-size: var(--fs-small); font-weight: 500; }
 .cube { width: 14px; height: 14px; flex: none; overflow: visible; }
 .cube path { fill: none; stroke-linejoin: round; stroke-linecap: round; }
 .cube .e { stroke: color-mix(in srgb, var(--faint) 75%, transparent); stroke-width: 18; }
@@ -535,18 +571,216 @@ table.sized .name[data-detail] > div:last-child { max-width: none; }
 .pxgrid { display: grid; gap: 10px; max-width: 560px; }
 /* Servers: Docker on other machines over SSH (the Mac and Linux windows; kiri-win has no SSH side yet). */
 body.win nav [data-view="servers"] { display: none; }
-.srv-on { margin-inline-start: 6px; color: var(--blue-light); font-weight: 600; text-transform: none; letter-spacing: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 120px; }
-.srv-form { display: grid; gap: 10px; max-width: 620px; padding: 16px; margin: 0 0 18px; border: 1px solid var(--line); border-radius: 10px; background: var(--panel); }
-.srv-form h3 { font-size: var(--fs-head); margin-bottom: 2px; }
-.srv-form .seg { grid-row: auto; grid-column: auto; justify-self: start; }
-.srv-form .res-foot { margin-top: 4px; }
-.srv-pw { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-.srv-pw input { height: 26px; width: 200px; padding: 0 8px; border-radius: 6px; border: 1px solid var(--line); background: var(--panel); color: var(--text); font: var(--fs) var(--ui-font); outline: none; }
-.srv-pw input:focus { border-color: var(--blue); box-shadow: 0 0 0 3px color-mix(in srgb, var(--blue) 22%, transparent); }
+/* --- a lighter row: its icon buttons are quiet until pointed at -------------------------------
+   Four bordered boxes on every row read as a toolbar repeated down the list.
+   Borderless, they leave the names room; a row's hover (or focus) brings
+   their outline back, and a button's own hover its colour. */
+td.actions .acts-row { gap: 2px; }
+td.actions .btn.ic, td.actions .btn.more { border-color: transparent; background: transparent; }
+tr.row:hover td.actions .btn.ic:not(:disabled), tr.row:focus-within td.actions .btn.ic:not(:disabled),
+tr.row:hover td.actions .btn.more, tr.row:focus-within td.actions .btn.more { border-color: color-mix(in srgb, var(--line) 70%, transparent); }
+td.actions .btn.ic:hover:not(:disabled), td.actions .btn.more:hover { background: var(--raised); border-color: var(--line); }
+td.actions .btn.ic.halt, td.actions .btn.ic.danger { color: color-mix(in srgb, var(--red-text) 70%, var(--muted)); }
+tr.row:hover td.actions .btn.ic.halt, tr.row:hover td.actions .btn.ic.danger { color: var(--red-text); }
+.btn { transition: background-color .15s, border-color .15s, color .15s, box-shadow .15s, transform .08s; }
+.btn:active:not(:disabled) { transform: translateY(.5px); }
+.btn svg.i { width: 14px; height: 14px; fill: currentColor; flex: none; }
+
+body:not(.rail) aside { overflow-y: auto; scrollbar-width: none; }
+body:not(.rail) aside::-webkit-scrollbar { display: none; }
+body:not(.rail) aside > * { flex-shrink: 0; }
+/*UNIX*/
+/* --- the engine switcher ------------------------------------------------------------------- */
+.engsw { flex: none; display: grid; grid-template-columns: 30px minmax(0, 1fr) auto; align-items: center; gap: 10px; width: 100%; margin: 2px 0 6px; padding: 6px 8px;
+  border: 1px solid var(--line); border-radius: 10px; background: color-mix(in srgb, var(--panel) 70%, transparent); color: var(--text); font: inherit; text-align: start; cursor: pointer;
+  transition: background-color .15s, border-color .15s; }
+.engsw:hover { background: var(--panel); border-color: color-mix(in srgb, var(--faint) 60%, var(--line)); }
+.engsw:focus-visible { outline: none; box-shadow: 0 0 0 3px color-mix(in srgb, var(--blue) 25%, transparent); }
+.engsw-ico { position: relative; width: 30px; height: 30px; border-radius: 8px; display: grid; place-items: center; background: color-mix(in srgb, var(--blue) 14%, var(--raised)); color: var(--blue-light); }
+.engsw-ico svg { width: 16px; height: 16px; fill: currentColor; }
+.engsw-ico::after { content: ""; position: absolute; inset-inline-end: -2px; bottom: -2px; width: 9px; height: 9px; border-radius: 50%; background: var(--moss); border: 2px solid var(--side); }
+body[data-vm="stopped"] .engsw:not(.remote) .engsw-ico::after { background: var(--faint); }
+.engsw.remote .engsw-ico { background: color-mix(in srgb, var(--ext) 18%, var(--raised)); color: var(--ext-text); }
+.engsw.busy .engsw-ico::after { background: var(--sun); }
+.engsw-t { display: grid; min-width: 0; line-height: 1.25; }
+.engsw-t b { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.engsw-t small { color: var(--muted); font-size: var(--fs-small); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.engsw > .caret { width: 12px; height: 12px; fill: var(--muted); transform: rotate(90deg); }
+body.rail .engsw { grid-template-columns: 30px; justify-content: center; padding: 6px; }
+body.rail .engsw-t, body.rail .engsw > .caret { display: none; }
+body.win .engsw { display: none; }
+.srv-on { display: none; }
+.menu.engmenu { min-width: 250px; padding: 5px; }
+.menu.engmenu button { height: auto; min-height: 30px; line-height: 1.3; display: grid; grid-template-columns: 18px minmax(0, 1fr); align-items: center; gap: 8px; padding: 6px 8px; }
+.menu.engmenu button.engmi-sep { margin-top: 4px; border-top: 1px solid var(--line); border-radius: 0 0 6px 6px; padding-top: 9px; }
+.engmi-tick { display: grid; place-items: center; width: 18px; height: 18px; color: var(--blue-light); }
+.engmi-tick svg { width: 14px; height: 14px; fill: currentColor; }
+.engmi { display: grid; min-width: 0; text-align: start; line-height: 1.3; }
+.engmi b { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.engmi small { color: var(--muted); font-size: var(--fs-small); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* --- Servers: cards ------------------------------------------------------------------------- */
+.srv-intro { color: var(--muted); max-width: 720px; margin: 0 0 18px; line-height: 1.55; }
+.srv-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)); gap: 14px; }
+.srv-card { position: relative; display: grid; grid-template-rows: auto auto 1fr auto; gap: 12px; min-width: 0; padding: 16px; border: 1px solid var(--line); border-radius: 12px;
+  background: var(--panel); transition: border-color .15s, box-shadow .15s, transform .15s; }
+.srv-card:hover { border-color: color-mix(in srgb, var(--faint) 55%, var(--line)); box-shadow: 0 6px 20px rgb(0 0 0 / .12); }
+.srv-card.on { border-color: color-mix(in srgb, var(--moss) 55%, var(--line)); box-shadow: 0 0 0 1px color-mix(in srgb, var(--moss) 35%, transparent) inset; }
+.srv-card header { display: grid; grid-template-columns: 38px minmax(0, 1fr) auto; align-items: center; gap: 12px; }
+.srv-ico { width: 38px; height: 38px; border-radius: 10px; display: grid; place-items: center; background: color-mix(in srgb, var(--ext) 15%, var(--raised)); color: var(--ext-text); flex: none; }
+.srv-card.here .srv-ico { background: color-mix(in srgb, var(--blue) 14%, var(--raised)); color: var(--blue-light); }
+.srv-ico svg { width: 19px; height: 19px; fill: currentColor; }
+.srv-id { display: grid; min-width: 0; line-height: 1.35; }
+.srv-id b { font-weight: 600; font-size: var(--fs-head); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.srv-id span { color: var(--muted); font-size: var(--fs-small); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.srv-state { display: inline-flex; align-items: center; gap: 6px; padding: 3px 9px; border-radius: 99px; font-size: var(--fs-small); font-weight: 600; color: var(--muted); background: var(--raised); white-space: nowrap; }
+.srv-state i { width: 7px; height: 7px; border-radius: 50%; background: var(--faint); }
+.srv-state.on { color: color-mix(in srgb, var(--moss) 75%, var(--text)); background: color-mix(in srgb, var(--moss) 14%, transparent); }
+.srv-state.on i { background: var(--moss); box-shadow: 0 0 0 3px color-mix(in srgb, var(--moss) 25%, transparent); }
+.srv-state.busy { color: var(--sun-text); background: color-mix(in srgb, var(--sun) 14%, transparent); }
+.srv-state .hspin { width: 10px; height: 10px; border-width: 1.5px; border-top-color: currentColor; }
+.srv-tags { display: flex; flex-wrap: wrap; gap: 6px; }
+.srv-tag { display: inline-flex; align-items: center; gap: 5px; max-width: 100%; padding: 3px 8px; border-radius: 6px; font-size: var(--fs-small); color: var(--muted); background: var(--raised); border: 1px solid var(--line); }
+.srv-tag svg { width: 12px; height: 12px; fill: currentColor; flex: none; }
+.srv-tag.jump { color: var(--ext-text); border-color: color-mix(in srgb, var(--ext) 35%, var(--line)); background: color-mix(in srgb, var(--ext) 10%, transparent); }
+.srv-tag.quiet { background: none; }
+.srv-info { color: var(--muted); font-size: var(--fs-small); }
+.srv-err { display: flex; gap: 8px; align-items: flex-start; padding: 8px 10px; border-radius: 8px; color: var(--red-text); font-size: var(--fs-small); line-height: 1.45;
+  background: color-mix(in srgb, var(--red) 9%, transparent); border: 1px solid color-mix(in srgb, var(--red) 30%, transparent); white-space: normal; }
+.srv-err svg { width: 14px; height: 14px; fill: currentColor; flex: none; margin-top: 1px; }
+.srv-card footer { display: flex; align-items: center; gap: 4px; }
+.srv-card footer .grow, .srv-dlg-f .grow { flex: 1; }
+.btn.quietic { border-color: transparent; background: transparent; }
+.btn.quietic:hover:not(:disabled) { background: var(--raised); border-color: var(--line); }
+.srv-card.add { place-content: center; justify-items: center; text-align: center; gap: 6px; min-height: 168px; border-style: dashed; background: transparent; color: var(--muted); font: inherit; cursor: pointer; }
+.srv-card.add svg { width: 22px; height: 22px; fill: currentColor; margin-bottom: 4px; }
+.srv-card.add b { color: var(--text); font-weight: 600; }
+.srv-card.add span { font-size: var(--fs-small); }
+/* The list layout: one row a server, Kiri first. */
+#hright .seg.srv-lay { grid-row: auto; grid-column: auto; margin-inline-end: 8px; }
+.srv-lay button { width: 34px; padding: 0; display: inline-grid; place-items: center; }
+.srv-lay button svg { width: 15px; height: 15px; fill: currentColor; }
+.srv-lay button[aria-pressed="true"] { background: var(--raised); color: var(--text); }
+.srv-tablewrap { border: 1px solid var(--line); border-radius: 12px; overflow: hidden; background: var(--panel); }
+table.srv-table { width: 100%; border-collapse: collapse; table-layout: auto; }
+.srv-table th { text-align: start; padding: 9px 14px; font-size: var(--fs-small); font-weight: 600; color: var(--faint); text-transform: uppercase; letter-spacing: .06em; border-bottom: 1px solid var(--line); white-space: nowrap; }
+.srv-table td { padding: 10px 14px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+.srv-table tr.srv-row { transition: background-color .12s; }
+.srv-table tr.srv-row:hover { background: var(--row-hover); }
+.srv-table tr.srv-row.on td:first-child { box-shadow: inset 3px 0 0 var(--moss); }
+.srv-table .srv-err { margin-top: 8px; }
+.srv-table td.actions .acts-row { justify-content: flex-end; gap: 4px; align-items: center; background: none; padding-inline-start: 0; }
+.srv-rname { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.srv-ico.sm { width: 30px; height: 30px; border-radius: 8px; }
+.srv-ico.sm svg { width: 16px; height: 16px; }
+.srv-row.here .srv-ico { background: color-mix(in srgb, var(--blue) 14%, var(--raised)); color: var(--blue-light); }
+.srv-auth { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+.srv-auth svg { width: 13px; height: 13px; fill: currentColor; flex: none; }
+.srv-none { text-align: center; padding: 20px; }
+.srv-addrow { display: flex; align-items: center; gap: 8px; width: 100%; padding: 11px 14px; border: 0; background: none; color: var(--muted); font: 500 var(--fs) var(--ui-font); cursor: pointer; text-align: start; }
+.srv-addrow svg { width: 15px; height: 15px; fill: currentColor; }
+.srv-addrow:hover { color: var(--blue-light); background: color-mix(in srgb, var(--blue) 6%, transparent); }
+.srv-card.add:hover { color: var(--blue-light); border-color: color-mix(in srgb, var(--blue) 50%, var(--line)); background: color-mix(in srgb, var(--blue) 5%, transparent); }
+
+/* --- the server dialog ---------------------------------------------------------------------- */
+.dialog.srv-dlg { width: min(580px, calc(100% - 32px)); max-height: calc(100% - 48px); padding: 0; gap: 0; grid-template-rows: auto minmax(0, 1fr) auto; overflow: hidden; box-shadow: 0 24px 60px rgb(0 0 0 / .4); }
+.srv-dlg-h { display: grid; grid-template-columns: 38px minmax(0, 1fr) auto; align-items: center; gap: 12px; padding: 18px 20px 14px; }
+.srv-dlg-h h3 { font-size: var(--fs-head); }
+.srv-dlg-h p { color: var(--muted); font-size: var(--fs-small); margin-top: 2px; }
+.srv-dlg-h .x { width: 28px; height: 28px; border: 0; border-radius: 7px; background: none; color: var(--muted); font-size: var(--fs-title); cursor: pointer; }
+.srv-dlg-h .x:hover { background: var(--raised); color: var(--text); }
+.srv-dlg-b { overflow: auto; padding: 4px 20px 16px; display: grid; gap: 18px; border-top: 1px solid var(--line); padding-top: 16px; }
+.srv-dlg-b section { display: grid; gap: 10px; }
+.srv-dlg-b h4 { font-size: var(--fs-small); font-weight: 600; color: var(--faint); text-transform: uppercase; letter-spacing: .07em; }
+.srv-fgrid { display: grid; grid-template-columns: minmax(0, 1fr) 110px; gap: 10px 12px; }
+.srv-f { display: grid; gap: 5px; min-width: 0; font-size: var(--fs-small); color: var(--muted); font-weight: 500; }
+.srv-f.wide { grid-column: 1 / -1; }
+.srv-f .field { width: 100%; height: 34px; }
+.srv-pwbox { position: relative; display: block; }
+.srv-pwbox .field { padding-inline-end: 38px; }
+.srv-eye { position: absolute; inset-inline-end: 4px; top: 50%; transform: translateY(-50%); width: 28px; height: 26px; border: 0; border-radius: 6px; background: none; color: var(--muted); display: grid; place-items: center; cursor: pointer; }
+.srv-eye:hover { background: var(--raised); color: var(--text); }
+.srv-eye svg { width: 16px; height: 16px; fill: currentColor; }
+.srv-dlg .seg.srv-seg { grid-row: auto; grid-column: auto; justify-self: start; }
+.srv-seg button[aria-pressed="true"] { background: var(--raised); color: var(--text); }
+.srv-hint { color: var(--faint); font-size: var(--fs-small); }
+.srv-switch { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: start; gap: 12px; cursor: pointer; }
+.srv-switch input { position: absolute; opacity: 0; pointer-events: none; }
+.srv-switch .sw { position: relative; width: 32px; height: 19px; margin-top: 1px; border-radius: 99px; background: var(--line); transition: background-color .15s; }
+.srv-switch .sw::after { content: ""; position: absolute; top: 2px; inset-inline-start: 2px; width: 15px; height: 15px; border-radius: 50%; background: #fff; box-shadow: 0 1px 2px rgb(0 0 0 / .3); transition: transform .15s; }
+.srv-switch input:checked + .sw { background: var(--blue); }
+.srv-switch input:checked + .sw::after { transform: translateX(calc(13px * var(--dir, 1))); }
+.srv-switch input:focus-visible + .sw { box-shadow: 0 0 0 3px color-mix(in srgb, var(--blue) 25%, transparent); }
+.srv-switch b { display: block; font-weight: 600; }
+.srv-switch small { display: block; color: var(--muted); font-size: var(--fs-small); margin-top: 2px; line-height: 1.45; }
+.srv-jump.on { padding: 12px; margin: 0 -12px; border-radius: 10px; background: color-mix(in srgb, var(--ext) 6%, transparent); border: 1px solid color-mix(in srgb, var(--ext) 22%, var(--line)); }
+.srv-stores { display: grid; gap: 8px; }
+.srv-store { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 10px; align-items: start; padding: 10px 12px; border: 1px solid var(--line); border-radius: 9px; cursor: pointer; }
+.srv-store.on { border-color: color-mix(in srgb, var(--blue) 60%, var(--line)); background: color-mix(in srgb, var(--blue) 7%, transparent); }
+.srv-store input { margin-top: 3px; accent-color: var(--blue); }
+.srv-store b { display: block; font-weight: 600; }
+.srv-store small { display: block; color: var(--muted); font-size: var(--fs-small); margin-top: 2px; line-height: 1.45; }
+.srv-adv summary { cursor: pointer; color: var(--muted); font-size: var(--fs-small); font-weight: 600; }
+.srv-adv[open] summary { margin-bottom: 10px; }
+.srv-test { display: flex; align-items: flex-start; gap: 8px; padding: 9px 11px; border-radius: 8px; font-size: var(--fs-small); line-height: 1.45; }
+.srv-test svg { width: 15px; height: 15px; fill: currentColor; flex: none; margin-top: 1px; }
+.srv-test.busy { color: var(--muted); background: var(--raised); align-items: center; }
+.srv-test.ok { color: color-mix(in srgb, var(--moss) 80%, var(--text)); background: color-mix(in srgb, var(--moss) 12%, transparent); }
+.srv-test.bad { color: var(--red-text); background: color-mix(in srgb, var(--red) 9%, transparent); }
+.srv-test .hspin { width: 12px; height: 12px; }
+.srv-dlg-f { display: flex; align-items: center; gap: 8px; padding: 14px 20px; border-top: 1px solid var(--line); background: color-mix(in srgb, var(--raised) 45%, transparent); }
+.dialog.srv-ask { width: min(420px, calc(100% - 32px)); gap: 14px; }
+.srv-ask .srv-dlg-h { padding: 0; grid-template-columns: 38px minmax(0, 1fr); }
+.srv-ask .srv-ico { background: color-mix(in srgb, var(--sun) 14%, var(--raised)); color: var(--sun-text); }
+.srv-check { display: flex; align-items: center; gap: 8px; color: var(--muted); font-size: var(--fs-small); cursor: pointer; }
+.srv-check input { accent-color: var(--blue); }
 .srv-busy .hspin { width: 11px; height: 11px; margin-inline-end: 6px; border-color: color-mix(in srgb, currentColor 30%, transparent); border-top-color: currentColor; }
 .srv-wait h3 { display: flex; align-items: center; justify-content: center; gap: 10px; }
 .srv-wait .err { color: var(--red-text); white-space: pre-wrap; max-width: 560px; margin: 0 auto 12px; }
-.srv-intro { color: var(--muted); max-width: 720px; margin: 0 0 14px; line-height: 1.5; }
+.hspin.big { display: block; width: 26px; height: 26px; margin: 0 auto 14px; border-width: 2.5px; }
+
+/* --- Processes ------------------------------------------------------------------------------ */
+#hright .seg.pr-seg { grid-row: auto; grid-column: auto; }
+.pr-seg button { display: inline-flex; align-items: center; gap: 7px; }
+.pr-seg button[aria-selected="true"] { background: var(--raised); color: var(--text); }
+.pr-seg .n { font-size: var(--fs-small); color: var(--faint); font-variant-numeric: tabular-nums; }
+.pr-seg [aria-selected="true"] .n { color: inherit; opacity: .75; }
+.pr-live { display: inline-flex; align-items: center; gap: 6px; margin-inline-start: 10px; color: var(--muted); font-size: var(--fs-small); }
+.pr-live i { width: 7px; height: 7px; border-radius: 50%; background: var(--moss); animation: pr-pulse 2s ease-in-out infinite; }
+@keyframes pr-pulse { 50% { opacity: .35; } }
+@media (prefers-reduced-motion: reduce) { .pr-live i, .pr-bar.indet span { animation: none; } }
+.pr-sec { display: grid; gap: 10px; margin-bottom: 26px; }
+.pr-sec h4 { display: flex; align-items: center; gap: 8px; font-size: var(--fs-small); font-weight: 600; color: var(--faint); text-transform: uppercase; letter-spacing: .07em; }
+.pr-sec h4 .n { padding: 1px 7px; border-radius: 99px; background: var(--raised); color: var(--muted); letter-spacing: 0; }
+.pr-tasks { list-style: none; display: grid; gap: 8px; margin: 0; padding: 0; }
+.pr-task { display: grid; grid-template-columns: 34px minmax(0, 1fr) auto; align-items: center; gap: 12px; padding: 12px 14px; border: 1px solid var(--line); border-radius: 10px; background: var(--panel); }
+.pr-ico { width: 34px; height: 34px; border-radius: 9px; display: grid; place-items: center; background: color-mix(in srgb, var(--blue) 13%, var(--raised)); color: var(--blue-light); flex: none; }
+.pr-ico.sm { width: 26px; height: 26px; border-radius: 7px; }
+.pr-ico svg { width: 16px; height: 16px; fill: currentColor; }
+.pr-ico.sm svg { width: 14px; height: 14px; }
+.pr-main { display: grid; gap: 6px; min-width: 0; }
+.pr-t { display: flex; align-items: baseline; gap: 10px; min-width: 0; }
+.pr-t b { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; }
+.pr-sub { font-size: var(--fs-small); }
+.pr-bar { height: 4px; border-radius: 99px; background: var(--raised); overflow: hidden; }
+.pr-bar span { display: block; height: 100%; border-radius: inherit; background: var(--blue-light); transition: width .3s; }
+.pr-bar.indet span { width: 35%; animation: pr-slide 1.3s ease-in-out infinite; }
+@keyframes pr-slide { from { transform: translateX(-100%); } to { transform: translateX(300%); } }
+.pr-none { display: flex; align-items: center; gap: 10px; padding: 14px 16px; border: 1px dashed var(--line); border-radius: 10px; color: var(--muted); }
+.pr-none svg { width: 18px; height: 18px; fill: var(--moss); flex: none; }
+table.pr-table { table-layout: auto; }
+table.pr-table td .sub { max-width: 520px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--fs-small); }
+table.pr-table .num { font-variant-numeric: tabular-nums; }
+table.pr-table th.r, table.pr-table td.num { text-align: end; }
+table.pr-table.procs td.pr-cmd { max-width: 0; width: 55%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+tr.pr-group td { padding-top: 16px; background: none; border-bottom: 1px solid var(--line); }
+tr.pr-group .name { display: flex; align-items: center; gap: 10px; }
+tr.pr-group b { font-weight: 600; }
+tr.pr-group .err { color: var(--red-text); font-size: var(--fs-small); margin-inline-start: 10px; }
+.statusbar .item.tasks { display: inline-flex; align-items: center; gap: 6px; }
+.statusbar .item.tasks .hspin { width: 10px; height: 10px; border-width: 1.5px; }
+body.win nav [data-view="processes"] { display: none; }
+/*/UNIX*/
 .pxf { display: grid; grid-template-columns: 120px 1fr; align-items: center; gap: 12px; font-size: var(--fs); color: var(--muted); }
 .pxf .field { width: 100%; }
 .res-foot { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
@@ -2302,7 +2536,7 @@ tr.usb-more > td { padding: 0; background: var(--panel); }
 </header>
 
 <aside>
-
+  <!--UNIX--><button class="engsw" id="engsw" aria-haspopup="menu" data-i18n-label="Switch engine" aria-label="Switch engine"><span class="engsw-ico"></span><span class="engsw-t"><b id="engsw-name">Kiri</b><small id="engsw-sub"></small></span><svg class="caret" viewBox="0 0 256 256" data-ph="caret"></svg></button><!--/UNIX-->
   <div class="navlabel" id="docker-label">Docker<span class="kside srv-on" id="docker-on" hidden></span><button class="kwrench" id="theme-toggle"><svg class="i" viewBox="0 0 256 256"></svg></button></div>
   <nav>
     <button data-view="containers"><svg class="i" viewBox="0 0 256 256" data-ph="cube"></svg><span class="lbl" data-i18n="Containers">Containers</span><span class="count" id="n-containers">0</span></button>
@@ -2318,7 +2552,8 @@ tr.usb-more > td { padding: 0; background: var(--panel); }
   </nav>
   <div class="navlabel">Kiri</div>
   <nav>
-    <button data-view="servers"><svg class="i" viewBox="0 0 256 256" data-ph="harddrive"></svg><span class="lbl" data-i18n="Servers">Servers</span><span class="count" id="n-servers"></span></button>
+    <!--UNIX--><button data-view="servers"><svg class="i" viewBox="0 0 256 256" data-ph="harddrive"></svg><span class="lbl" data-i18n="Servers">Servers</span><span class="count" id="n-servers"></span></button>
+    <button data-view="processes"><svg class="i" viewBox="0 0 256 256" data-ph="trendup"></svg><span class="lbl" data-i18n="Processes">Processes</span><span class="count" id="n-processes"></span></button><!--/UNIX-->
     <button data-view="usb"><svg class="i" viewBox="0 0 256 256" data-ph="usb"></svg><span class="lbl" data-i18n="USB">USB</span><span class="beta" data-i18n-title="USB passthrough is new: tell us how it works with your devices" title="USB passthrough is new: tell us how it works with your devices" data-i18n="Beta">Beta</span><span class="count" id="n-usb"></span></button>
     <button data-view="share" class="shareonly"><svg class="i" viewBox="0 0 256 256" data-ph="globe"></svg><span class="lbl" data-i18n="Share">Share</span></button>
     <button data-view="settings"><svg class="i" viewBox="0 0 256 256" data-ph="gear"></svg><span class="lbl" data-i18n="Settings">Settings</span></button>
@@ -2559,7 +2794,8 @@ const VM = LINUX ? "Engine" : "Linux VM";
 const shareOn = () => !!(ui.status?.share ?? ui.status?.dev);
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
 
-const ui = { srv: { list: [], on: null, connecting: null, error: null, form: null, pw: null, info: null, loading: null, listErr: null }, running: new Set(), launched: new Map(), runWatch: new Map(), need: null, probed: new Map(), probing: new Set(), why: new Map(), startErr: {}, fixed: null, openTab: null, listening: new Map(), starting: new Map(), scans: new Map(), scanf: { sev: "", fix: false, own: false }, view: "containers", vm: "stopped", containers: [], images: [], volumes: [], networks: [], sort: { images: { key: "pulled", desc: true } }, filter: "", suffix: "kiri.localhost", collapsed: new Set(), res: null, resDraft: {}, proxy: null, pxDraft: {}, rports: null, rpDraft: {}, rpAt: 0,
+const ui = { srv: { list: [], on: null, connecting: null, error: null, form: null, prompt: null, info: null, loading: null, listErr: null, stores: null, test: null, reveal: null },
+  pr: { tab: "tasks", tasks: [], mine: null, procs: null, timer: 0, skew: 0 }, running: new Set(), launched: new Map(), runWatch: new Map(), need: null, probed: new Map(), probing: new Set(), why: new Map(), startErr: {}, fixed: null, openTab: null, listening: new Map(), starting: new Map(), scans: new Map(), scanf: { sev: "", fix: false, own: false }, view: "containers", vm: "stopped", containers: [], images: [], volumes: [], networks: [], sort: { images: { key: "pulled", desc: true } }, filter: "", suffix: "kiri.localhost", collapsed: new Set(), res: null, resDraft: {}, proxy: null, pxDraft: {}, rports: null, rpDraft: {}, rpAt: 0,
   imp: { sources: null, source: null, inv: null, picked: { images: new Set(), volumes: new Set(), containers: new Set() }, steps: {}, running: false, summary: "" },
   upd: null, engineStale: null, staleHidden: false,
   // The Builds view: the list, the picked build and its detail, and how its steps show.
@@ -2786,6 +3022,21 @@ document.addEventListener("keydown", (ev) => {
   const text = String(getSelection());
   if (text) send("term", { name: "copy", value: text });
 });
+/* ⌘1 to ⌘9 (Ctrl on Windows and Linux): the sidebar's views, top to bottom. */
+const navOrder = () => [...document.querySelectorAll("aside nav button[data-view]")].filter((b) => b.offsetParent !== null);
+document.addEventListener("keydown", (ev) => {
+  const mod = WIN || LINUX ? ev.ctrlKey && !ev.metaKey : ev.metaKey && !ev.ctrlKey;
+  if (!mod || ev.altKey || ev.shiftKey || !/^[1-9]$/.test(ev.key) || document.querySelector(".scrim")) return;
+  const b = navOrder()[+ev.key - 1];
+  if (!b) return;
+  ev.preventDefault();
+  b.click();
+});
+// Each one's key in its tooltip, set as the pointer comes to the sidebar (which views show can change).
+document.querySelector("aside")?.addEventListener("mouseenter", () => {
+  const k = WIN || LINUX ? "Ctrl+" : "⌘";
+  navOrder().forEach((b, i) => { if (i < 9) b.title = `${b.querySelector(".lbl")?.textContent || ""} (${k}${i + 1})`; });
+});
 /* A new language: the markup's words now, the rest as each part draws again
    (render, the status bar and the engine card follow in the callers). */
 function relang() {
@@ -2794,6 +3045,7 @@ function relang() {
   for (const k in optsMemo) delete optsMemo[k];
   themeBtn();
   $("vm-name").textContent = tr(VM);
+  paintSwitcher();
   // The state word and the button are the engine's, painted when it changes: paint them in the new language now.
   paintEngine();
   // Words set when their state last changed, not on render: the strip's buttons, the Kubernetes dot.
@@ -4101,10 +4353,13 @@ function show(view) {
   // Coming back to Images, every Run button is play again.
   if (view !== ui.view) ui.launched.clear();
   needClose();
+  const moved = view !== ui.view;
   ui.view = view; ui.filter = ""; $("gq").value = "";
+  if (moved) { const c = $("content"); c.classList.remove("vin"); void c.offsetWidth; c.classList.add("vin"); }
   if (view === "builds") send("builds");
   if (view === "usb") usbPoll();
   if (view === "servers") send("servers");
+  if (view === "processes") { send("tasks"); setTimeout(prPoll, 0); }
   if (view === "share") { send("shares"); send("shareusage"); shPoll(); }
   if (view === "settings") { if (!fontLists.families.length) send("fonts"); send("about"); send("logins"); send("resources"); send("proxy"); send("routerports"); if (!ui.imp.sources) send("importsources"); if (prefs.tab === "diagnostics") diagOpen(); }
   render();
@@ -4433,7 +4688,8 @@ function showMenu(button, items) {
 document.addEventListener("click", (ev) => {
   const item = ev.target.closest(".menu button");
   if (item) {
-    if (item.dataset.ports) openPorts(item.dataset.ports);
+    if (item.dataset.eng !== undefined) engPick(item.dataset.eng);
+    else if (item.dataset.ports) openPorts(item.dataset.ports);
     else if (item.dataset.c) containerAction(item.dataset.c, item.dataset.id);
     else if (item.dataset.g) projectAsk(item.dataset.project, item.dataset.g);
     return closeMenu();
@@ -4786,12 +5042,59 @@ function renderImageDetail() {
     ${d.tab === "security" ? scanView(i, { own: tr("this image") }) : layersView(d.layers, null, { own: tr("Added in this image"), base: tr("From its base image") })}`;
 }
 
+/* Which containers a volume or a network serves, from the container list
+   itself (each container's Mounts and its networks), running ones first: the
+   Used by column, the In use and Unused tabs, and Remove's warning read it. */
+const byState = (cs) => [...cs].sort((a, b) => (ctrState(a) === "running" ? 0 : 1) - (ctrState(b) === "running" ? 0 : 1));
+const volUsers = (v) => byState(ui.containers.filter((c) => (c.Mounts || []).some((m) => m.Type === "volume" && m.Name === v.Name)));
+const netUsers = (n) => byState(ui.containers.filter((c) => Object.entries(c.NetworkSettings?.Networks || {}).some(([k, e]) => k === n.Name || (e?.NetworkID && e.NetworkID === n.Id))
+  || c.HostConfig?.NetworkMode === n.Name || (n.Name === "bridge" && c.HostConfig?.NetworkMode === "default" && !Object.keys(c.NetworkSettings?.Networks || {}).length)));
+/* The Used by cell: each container as a chip with its state's dot (a click
+   opens it), three at most and how many more. */
+function usersCell(users) {
+  if (!users.length) return `<td class="used"><div class="l1">${cube("off")}<span class="off">${tr("not in use")}</span></div></td>`;
+  const up = users.filter((c) => ctrState(c) === "running").length;
+  const chips = users.slice(0, 3).map((c) => `<button class="uchip ${ctrState(c)}" data-golive="${esc(c.Id)}" title="${esc(tr("Open {name}", { name: cname(c) }))}"><i aria-hidden="true"></i>${esc(cname(c))}</button>`).join("");
+  const more = users.length > 3 ? `<span class="umore" title="${esc(users.slice(3).map(cname).join(", "))}">${tr("+{n} more", { n: users.length - 3 })}</span>` : "";
+  return `<td class="used users" title="${up ? trn(up, "{n} running container", "{n} running containers") : tr("No container using it is running")}"><div class="uchips">${chips}${more}</div></td>`;
+}
+const usersList = (cs) => cs.map((c) => `<b>${esc(cname(c))}</b>`).join(", ");
+/* A dialog with only OK: why something can't go yet. */
+function sayWhy(title, html) {
+  const scrim = document.createElement("div");
+  scrim.className = "scrim";
+  scrim.innerHTML = `<div class="dialog alert" role="alertdialog" aria-modal="true">${alertIco("warn")}<h3>${title}</h3><p>${html}</p>
+    <div class="row-end"><span></span><button class="btn" data-close>${tr("OK")}</button></div></div>`;
+  document.body.append(scrim);
+  const close = () => { scrim.remove(); document.removeEventListener("keydown", onKey); };
+  const onKey = (ev) => { if (ev.key === "Escape") close(); };
+  document.addEventListener("keydown", onKey);
+  scrim.addEventListener("click", (ev) => { if (ev.target === scrim || ev.target.closest("[data-close]")) close(); else if (ev.target.closest("[data-golive]")) close(); });
+  scrim.querySelector("[data-close]")?.focus();
+}
+/* Remove on a volume: a volume a container still has can't go (the engine
+   refuses), so it says which; one nothing has is asked about as before. */
+function removeVolume(name) {
+  const v = (ui.volumes || []).find((x) => x.Name === name), users = v ? volUsers(v) : [];
+  if (users.length) return sayWhy(tr("{name} is in use", { name: esc(name) }), trn(users.length, "{list} keeps its data here. Remove that container first; the volume can go after.", "{list} keep their data here. Remove those containers first; the volume can go after.", { list: usersList(users) }));
+  confirmRemove(tr("Remove volume {name}?", { name: esc(name) }), tr("Its data is deleted for good."), tr("Remove"), () => send("rmvol", { name }));
+}
+/* Remove on a network: running containers on it come first (the engine
+   refuses); stopped ones are named, as they can't start without it. */
+function removeNetwork(id) {
+  const n = ui.networks.find((x) => x.Id === id), name = n?.Name || short(id), users = n ? netUsers(n) : [];
+  const running = users.filter((c) => ctrState(c) === "running");
+  if (running.length) return sayWhy(tr("{name} is in use", { name: esc(name) }), trn(running.length, "{list} is running on this network. Stop it first, then remove the network.", "{list} are running on this network. Stop them first, then remove the network.", { list: usersList(running) }));
+  confirmRemove(tr("Remove network {name}?", { name: esc(name) }), users.length ? trn(users.length, "{list} is on this network and won't start again without it.", "{list} are on this network and won't start again without it.", { list: usersList(users) }) : "", tr("Remove"), () => send("rmnet", { id }));
+}
+
 function renderVolumes() {
   const items = listed("volumes");
   if (!kept("volumes").length) return renderEmpty("volumes");
   if (!items.length) return noMatch();
-  table([[tr("Name")], [tr("Driver")], [tr("Created")]], items.map((v) => `<tr class="row${chosen("volumes", v)}" data-key="${esc(v.Name)}"${pickAt("volumes", v)}>
-    ${pickCell("volumes", v)}<td><div class="name">${tile(null, "database")}<span class="${v.Name.length > 40 ? "mono" : ""}">${esc(v.Name.length > 40 ? short(v.Name) : v.Name)}</span></div></td>
+  table([[tr("Name")], [tr("Used by")], [tr("Driver")], [tr("Created")]], items.map((v) => `<tr class="row${chosen("volumes", v)}" data-key="${esc(v.Name)}"${pickAt("volumes", v)}>
+    ${pickCell("volumes", v)}<td><div class="name">${tile(null, "database")}<span class="${v.Name.length > 40 ? "mono" : ""}" title="${esc(v.Name)}">${esc(v.Name.length > 40 ? short(v.Name) : v.Name)}</span></div></td>
+    ${usersCell(volUsers(v))}
     <td class="muted">${esc(v.Driver)}</td>
     <td class="muted">${v.CreatedAt ? ago(Date.parse(v.CreatedAt) / 1000) : ""}</td>
     <td class="actions"><div class="acts-row">${ibtn("trash", tr("Remove"), `data-rmvol="${esc(v.Name)}"`, "danger")}</div></td></tr>`), "volumes");
@@ -4948,62 +5251,254 @@ function usbUse(d, kind) {
 const usbPaths = (paths) => paths.length ? `<div class="h4">${tr("Inside Linux")}</div><dl class="usb-paths">${paths.map((p) =>
   `<dt class="mono">${esc(p.path)}</dt><dd>${USB_WHAT[p.what] || esc(p.what)}</dd>`).join("")}</dl>` : "";
 
+/*WIN*
+// Windows' page leaves Servers and Processes out (assemble.rs::for_windows):
+// what the shared code asks of them, standing in.
+function srvCur() { return null; } function srvAddr() { return ""; } function portHost() { return "localhost"; }
+function engineWaiting() { return false; } function renderEngineWait() {} function renderServers() {} function renderProcesses() {}
+function srvClick() { return false; } function srvEvent() {} function prEvent() {} function prPoll() {}
+function paintSwitcher() {} function openSwitcher() {} function engPick() {}
+const tasksItem = () => "";
+*WIN*/
+/*UNIX*/
 /* Servers: Docker engines on other machines, reached over SSH (remote.rs).
-   Each is a bookmark; Connect puts Containers, Images, Volumes and Networks
-   on that server until Disconnect. Passwords are asked at Connect and never kept. */
+   Each is a bookmark, shown as a card; Connect puts Containers, Images,
+   Volumes and Networks on that server until Disconnect. A server can sit
+   behind a jump host, and its passwords can be kept: in the system's store
+   (the Keychain) or Kiri's encrypted file, as the person picks. */
 /* Declared, not const: the status bar and the engine card ask while the page loads. */
 function srvCur() { return ui.srv.list.find((x) => x.id === ui.srv.on) || null; }
 function srvAddr(x) { return `${x.user ? `${x.user}@` : ""}${x.host}${x.port && x.port !== 22 ? `:${x.port}` : ""}`; }
 /* Where a published port is reached: this computer, or the server in use. */
 function portHost() { return srvCur()?.host || "localhost"; }
-function srvForm(f) {
-  const field = (k, label, ph, type = "text") => `<label class="pxf"><span>${label}</span><input class="field" id="srv-${k}" type="${type}" value="${esc(String(f[k] ?? ""))}" placeholder="${esc(ph)}" spellcheck="false" autocomplete="off"></label>`;
-  const err = ui.srv.error?.id === (f.id || "new") ? `<div class="signin-err">${esc(ui.srv.error.text)}</div>` : "";
-  return `<div class="srv-form" id="srv-form"><h3>${f.id ? tr("Edit server") : tr("Add a server")}</h3>
-    ${field("name", tr("Name"), "production")}${field("host", tr("Address"), "192.168.1.10")}${field("user", tr("User"), "root")}${field("port", tr("SSH port"), "22", "number")}
-    <label class="pxf"><span>${tr("Sign in with")}</span><div class="seg" role="group"><button data-srvauth="key" aria-pressed="${!f.password}">${tr("SSH key")}</button><button data-srvauth="pw" aria-pressed="${!!f.password}">${tr("Password")}</button></div></label>
-    ${f.password ? "" : field("key", tr("Key file"), tr("Optional: ~/.ssh/id_ed25519"))}
-    ${field("socket", tr("Docker socket"), "/var/run/docker.sock")}
-    ${err}
-    <div class="res-foot"><span class="muted">${f.password ? tr("The password is asked each time you connect, and never saved.") : tr("Uses your SSH keys and agent, as ssh does in Terminal.")}</span><span style="flex:1"></span><button class="btn" data-srvcancel>${tr("Cancel")}</button><button class="btn primary" data-srvsave>${tr("Save")}</button></div></div>`;
+const STORE_WORD = () => ({ keychain: LINUX ? tr("System keyring") : tr("Keychain"), file: tr("Kiri's encrypted file") });
+const SVG = (name, cls = "") => `<svg class="i ${cls}" viewBox="0 0 256 256" aria-hidden="true"><path d="${PH[name]}"/></svg>`;
+/* A password field with its eye: shows what's typed, or a kept one, fetched. */
+function pwField(id, label, value, saved, extra = "") {
+  return `<label class="srv-f"><span>${label}</span><span class="srv-pwbox"><input class="field" id="${id}" type="password" value="${esc(value || "")}" autocomplete="off" spellcheck="false"
+      placeholder="${saved ? esc(tr("Kept — leave empty to keep it")) : ""}"${extra}><button type="button" class="srv-eye" data-eye="${id}" title="${tr("Show password")}" aria-label="${tr("Show password")}" aria-pressed="false">${SVG("eye")}</button></span></label>`;
 }
-/* The form's fields as typed, kept across redraws. */
-function srvDraft() {
-  const f = ui.srv.form;
-  if (!f) return;
-  for (const k of ["name", "host", "user", "port", "key", "socket"]) { const el = $(`srv-${k}`); if (el) f[k] = el.value; }
+function srvF(id, label, value, ph = "", type = "text", wide = false) {
+  return `<label class="srv-f${wide ? " wide" : ""}"><span>${label}</span><input class="field" id="${id}" type="${type}" value="${esc(String(value ?? ""))}" placeholder="${esc(ph)}" spellcheck="false" autocomplete="off"></label>`;
+}
+const seg2 = (attr, a, b, onA) => `<div class="seg srv-seg" role="group"><button type="button" ${attr}="a" aria-pressed="${onA}">${a}</button><button type="button" ${attr}="b" aria-pressed="${!onA}">${b}</button></div>`;
+
+/* --- the cards ---------------------------------------------------------------------------- */
+function srvCard(x) {
+  const S = ui.srv, on = S.on === x.id, busy = S.connecting === x.id;
+  const err = S.error?.id === x.id && S.error.text && !S.prompt ? `<p class="srv-err" role="alert">${SVG("warncircle")}<span>${esc(S.error.text)}</span></p>` : "";
+  const auth = srvAuth(x);
+  const tags = [`<span class="srv-tag">${SVG(x.password ? "lock" : "shieldcheck")}${esc(auth)}</span>`,
+    x.jump ? `<span class="srv-tag jump" title="${tr("Reached through {jump}", { jump: esc(srvAddr(x.jump)) })}">${SVG("link")}${tr("via {jump}", { jump: esc(x.jump.host) })}</span>` : "",
+    x.last ? `<span class="srv-tag quiet">${SVG("clock")}${tr("Used {ago}", { ago: ago(x.last) })}</span>` : ""].join("");
+  const state = busy ? `<span class="srv-state busy"><span class="hspin" aria-hidden="true"></span>${tr("Connecting…")}</span>`
+    : on ? `<span class="srv-state on"><i></i>${tr("Connected")}</span>` : `<span class="srv-state"><i></i>${tr("Not connected")}</span>`;
+  const main = busy ? `<button class="btn sm" disabled>${tr("Connecting…")}</button>`
+    : on ? `<button class="btn sm" data-srvoff>${SVG("eject")}${tr("Disconnect")}</button>`
+    : `<button class="btn sm primary" data-srvcon="${esc(x.id)}"${S.connecting ? " disabled" : ""}>${SVG("plug")}${tr("Connect")}</button>`;
+  const info = on && S.info ? `<p class="srv-info">${esc(S.info)}</p>` : "";
+  return `<article class="srv-card${on ? " on" : ""}${busy ? " busy" : ""}" data-key="${esc(x.id)}">
+    <header><div class="srv-ico">${SVG("harddrive")}</div><div class="srv-id"><b title="${esc(x.name)}">${esc(x.name)}</b><span class="mono" title="${esc(srvAddr(x))}">${esc(srvAddr(x))}</span></div>${state}</header>
+    <div class="srv-tags">${tags}</div>${info}${err}
+    <footer>${main}<span class="grow"></span>
+      <button class="btn sm ic quietic" data-srvedit="${esc(x.id)}"${on || busy ? " disabled" : ""} title="${tr("Edit")}" aria-label="${tr("Edit")}">${SVG("sliders")}</button>
+      <button class="btn sm ic quietic danger" data-srvdel="${esc(x.id)}"${busy ? " disabled" : ""} title="${tr("Delete")}" aria-label="${tr("Delete")}">${SVG("trash")}</button></footer></article>`;
 }
 function renderServers() {
   const S = ui.srv, c = $("content");
-  srvDraft();
+  const here = `<article class="srv-card here${S.on ? "" : " on"}">
+    <header><div class="srv-ico">${SVG("cube")}</div><div class="srv-id"><b>Kiri</b><span>${tr("This {host}", { host: tr(HOST) })}</span></div>
+      ${S.on ? `<span class="srv-state"><i></i>${tr("Not in use")}</span>` : `<span class="srv-state on"><i></i>${tr("In use")}</span>`}</header>
+    <div class="srv-tags"><span class="srv-tag quiet">${SVG("lightning")}${tr("Kiri's own engine")}</span></div>
+    <footer>${S.on ? `<button class="btn sm" data-srvoff>${tr("Use Kiri")}</button>` : ""}</footer></article>`;
+  const add = `<button class="srv-card add" data-srvadd>${SVG("plug")}<b>${tr("Add a server")}</b><span>${tr("An IP address or host name, reached over SSH")}</span></button>`;
+  const q = ui.filter.toLowerCase(), list = S.list.filter((x) => !q || `${x.name} ${srvAddr(x)} ${x.jump?.host || ""}`.toLowerCase().includes(q));
   const intro = `<p class="srv-intro">${tr("Manage Docker on other machines over SSH. Connect to a server and Containers, Images, Volumes and Networks show what runs there, until you disconnect.")}</p>`;
+  c.innerHTML = srvLayout() === "list" ? intro + srvTable(list) : `${intro}<div class="srv-grid">${q ? "" : here}${list.map(srvCard).join("")}${q ? "" : add}</div>`;
+  const lay = srvLayout();
+  $("hright").innerHTML = `<div class="seg srv-lay" role="group" aria-label="${tr("Layout")}">${[["cards", "squaresfour", tr("Cards")], ["list", "rows", tr("List")]].map(([k, ic, w]) =>
+    `<button data-srvlay="${k}" aria-pressed="${lay === k}" title="${w}" aria-label="${w}">${SVG(ic)}</button>`).join("")}</div><button class="btn primary" data-srvadd>${tr("Add server")}</button>`;
+}
+/* Servers as cards (the default) or as a list: a row each, for many servers. */
+const srvLayout = () => (prefs.serversLayout === "list" ? "list" : "cards");
+function srvAuth(x) { return x.password ? (x.saved ? tr("Password · {store}", { store: STORE_WORD()[x.remember] || "" }) : tr("Password · asked")) : x.key ? tr("SSH key file") : tr("SSH key or agent"); }
+function srvTable(list) {
+  const S = ui.srv;
+  const state = (on, busy) => busy ? `<span class="srv-state busy"><span class="hspin" aria-hidden="true"></span>${tr("Connecting…")}</span>`
+    : on ? `<span class="srv-state on"><i></i>${tr("Connected")}</span>` : `<span class="srv-state"><i></i>${tr("Not connected")}</span>`;
   const row = (x) => {
     const on = S.on === x.id, busy = S.connecting === x.id;
-    const err = S.error?.id === x.id ? `<div class="signin-err">${esc(S.error.text)}</div>` : "";
-    const pw = S.pw === x.id ? `<div class="srv-pw"><input type="password" id="srv-pass" placeholder="${tr("Password")}" aria-label="${tr("Password")}" autocomplete="off"><button class="btn sm primary" data-srvgo="${esc(x.id)}">${tr("Connect")}</button><button class="btn sm" data-srvpwx>${tr("Cancel")}</button></div>` : "";
-    const act = busy ? `<button class="btn sm srv-busy" disabled aria-busy="true"><span class="hspin" aria-hidden="true"></span>${tr("Connecting…")}</button>`
-      : on ? `<button class="btn sm" data-srvoff>${tr("Disconnect")}</button>`
-      : `<button class="btn sm primary" data-srvcon="${esc(x.id)}"${S.connecting ? " disabled" : ""}>${tr("Connect")}</button>`;
-    return `<tr class="row${on ? " chosen" : ""}" data-key="${esc(x.id)}">
-      <td><div class="name">${tile(null, "harddrive")}<div><div>${esc(x.name)}</div>${err}${pw}</div></div></td>
-      <td class="mono muted">${esc(srvAddr(x))}</td>
-      <td>${on ? `<span class="pill running">${tr("Connected")}</span>` : `<span class="pill exited">${tr("Not connected")}</span>`}</td>
-      <td class="actions"><div class="acts-row">${act}<button class="btn sm" data-srvedit="${esc(x.id)}"${on || busy ? " disabled" : ""}>${tr("Edit")}</button><button class="btn sm danger" data-srvdel="${esc(x.id)}"${busy ? " disabled" : ""} title="${tr("Delete")}">${tr("Delete")}</button></div></td></tr>`;
+    const err = S.error?.id === x.id && S.error.text && !S.prompt ? `<div class="srv-err" role="alert">${SVG("warncircle")}<span>${esc(S.error.text)}</span></div>` : "";
+    const main = busy ? `<button class="btn sm" disabled>${tr("Connecting…")}</button>`
+      : on ? `<button class="btn sm" data-srvoff>${SVG("eject")}${tr("Disconnect")}</button>`
+      : `<button class="btn sm primary" data-srvcon="${esc(x.id)}"${S.connecting ? " disabled" : ""}>${SVG("plug")}${tr("Connect")}</button>`;
+    return `<tr class="row srv-row${on ? " on" : ""}" data-key="${esc(x.id)}">
+      <td><div class="srv-rname"><div class="srv-ico sm">${SVG("harddrive")}</div><div class="srv-id"><b title="${esc(x.name)}">${esc(x.name)}</b><span class="mono" title="${esc(srvAddr(x))}">${esc(srvAddr(x))}</span></div></div>${err}</td>
+      <td>${state(on, busy)}</td>
+      <td class="muted"><span class="srv-auth">${SVG(x.password ? "lock" : "shieldcheck")}${esc(srvAuth(x))}</span></td>
+      <td class="muted">${x.jump ? `<span class="srv-tag jump" title="${tr("Reached through {jump}", { jump: esc(srvAddr(x.jump)) })}">${SVG("link")}${esc(x.jump.host)}</span>` : "—"}</td>
+      <td class="muted">${x.last ? ago(x.last) : "—"}</td>
+      <td class="actions"><div class="acts-row">${main}
+        ${ibtn("sliders", tr("Edit"), `data-srvedit="${esc(x.id)}"${on || busy ? " disabled" : ""}`)}
+        ${ibtn("trash", tr("Delete"), `data-srvdel="${esc(x.id)}"${busy ? " disabled" : ""}`, "danger")}</div></td></tr>`;
   };
-  const here = `<tr class="row${S.on ? "" : " chosen"}"><td><div class="name">${tile(null, "cube")}<div><div>Kiri</div><div class="muted sub">${tr("This {host}", { host: tr(HOST) })}</div></div></div></td>
-    <td class="mono muted">—</td><td>${S.on ? `<span class="pill exited">${tr("Not in use")}</span>` : `<span class="pill running">${tr("In use")}</span>`}</td>
-    <td class="actions"><div class="acts-row">${S.on ? `<button class="btn sm" data-srvoff>${tr("Use Kiri")}</button>` : ""}</div></td></tr>`;
-  c.innerHTML = `${intro}${S.form ? srvForm(S.form) : ""}<table data-view="servers"><thead><tr><th>${tr("Name")}</th><th>${tr("Address")}</th><th>${tr("State")}</th><th class="r">${tr("Actions")}</th></tr></thead><tbody>${here}${S.list.map(row).join("")}</tbody></table>
-    ${S.list.length ? "" : `<p class="muted" style="margin-top:14px">${tr("No servers yet. Add one with its IP address and SSH user.")}</p>`}`;
-  $("hright").innerHTML = S.form ? "" : `<button class="btn primary" data-srvadd>${tr("Add server")}</button>`;
-  if (S.pw) $("srv-pass")?.focus();
+  const here = ui.filter ? "" : `<tr class="row srv-row here${S.on ? "" : " on"}"><td><div class="srv-rname"><div class="srv-ico sm">${SVG("cube")}</div><div class="srv-id"><b>Kiri</b><span>${tr("This {host}", { host: tr(HOST) })}</span></div></div></td>
+      <td>${S.on ? `<span class="srv-state"><i></i>${tr("Not in use")}</span>` : `<span class="srv-state on"><i></i>${tr("In use")}</span>`}</td>
+      <td class="muted">${tr("Kiri's own engine")}</td><td class="muted">—</td><td class="muted">—</td>
+      <td class="actions"><div class="acts-row">${S.on ? `<button class="btn sm" data-srvoff>${tr("Use Kiri")}</button>` : ""}</div></td></tr>`;
+  const empty = !list.length && ui.filter ? `<tr><td colspan="6" class="muted srv-none">${tr("No server matches.")}</td></tr>` : "";
+  return `<div class="srv-tablewrap"><table class="srv-table"><thead><tr><th>${tr("Name")}</th><th>${tr("State")}</th><th>${tr("Sign in")}</th><th>${tr("Jump host")}</th><th>${tr("Last used")}</th><th></th></tr></thead>
+    <tbody>${here}${list.map(row).join("")}${empty}</tbody></table>
+    <button class="srv-addrow" data-srvadd>${SVG("plug")}${tr("Add a server")}</button></div>`;
 }
 /* i18n */ void [tr("Servers"), tr("servers")];
-function srvConnect(id, password) {
-  Object.assign(ui.srv, { pw: null, error: null, connecting: id });
-  send("serverconnect", { id, value: password ?? null });
+
+/* --- the form, as a dialog ----------------------------------------------------------------- */
+const blankForm = () => ({ name: "", host: "", user: "", port: 22, key: "", socket: "", password: false, secret: "", remember: "", jumpOn: false,
+  jump: { host: "", user: "", port: 22, key: "", password: false }, jumpSecret: "", saved: false, jump_saved: false });
+function srvOpenForm(x) {
+  const f = x ? { ...blankForm(), ...JSON.parse(JSON.stringify(x)), secret: "", jumpSecret: "", jumpOn: !!x.jump } : blankForm();
+  if (!f.jump) f.jump = blankForm().jump;
+  ui.srv.form = f; ui.srv.error = null; ui.srv.test = null;
+  srvDialog();
+  setTimeout(() => $("sf-name")?.focus(), 0);
+}
+/* What's typed, into the form, before any redraw. */
+function srvDraft() {
+  const f = ui.srv.form, v = (id) => $(id)?.value;
+  if (!f || !$("srvdlg")) return;
+  for (const k of ["name", "host", "user", "port", "key", "socket", "secret"]) { const x = v(`sf-${k}`); if (x !== undefined) f[k] = x; }
+  for (const k of ["host", "user", "port", "key"]) { const x = v(`sj-${k}`); if (x !== undefined) f.jump[k] = x; }
+  const js = v("sj-secret"); if (js !== undefined) f.jumpSecret = js;
+}
+const formValue = (f) => ({ id: f.id || "", name: f.name, host: f.host, user: f.user, port: String(f.port || ""), key: f.password ? "" : f.key, socket: f.socket,
+  password: !!f.password, secret: f.password ? f.secret : "", remember: f.remember || "",
+  jump: f.jumpOn ? { host: f.jump.host, user: f.jump.user, port: String(f.jump.port || ""), key: f.jump.password ? "" : f.jump.key, password: !!f.jump.password } : null,
+  jumpSecret: f.jumpOn && f.jump.password ? f.jumpSecret : "" });
+function srvDialog() {
+  const S = ui.srv, f = S.form;
+  let scrim = $("srvdlg");
+  if (!f) { scrim?.remove(); return; }
+  srvDraft();
+  const focus = document.activeElement?.id, sel = [document.activeElement?.selectionStart, document.activeElement?.selectionEnd];
+  if (!scrim) {
+    scrim = Object.assign(document.createElement("div"), { id: "srvdlg", className: "scrim" });
+    scrim.addEventListener("click", srvDlgClick);
+    scrim.addEventListener("keydown", (ev) => {
+      if (ev.key === "Escape") { ev.preventDefault(); S.form = null; srvDialog(); }
+      else if (ev.key === "Enter" && ev.target.matches("input")) { ev.preventDefault(); srvSave(); }
+    });
+    document.body.append(scrim);
+  }
+  const anyPw = f.password || (f.jumpOn && f.jump.password);
+  const stores = S.stores || { keychain: true, file: true };
+  const err = S.error?.id === (f.id || "new") ? `<p class="srv-err" role="alert">${SVG("warncircle")}<span>${esc(S.error.text)}</span></p>` : "";
+  const t = S.test;
+  const test = !t ? "" : t.busy ? `<p class="srv-test busy" role="status"><span class="hspin" aria-hidden="true"></span>${tr("Testing the connection…")}</p>`
+    : t.ok ? `<p class="srv-test ok" role="status">${SVG("checkcircle")}<span>${tr("Connected: {what}", { what: esc([t.info.os, t.info.version && `Docker ${t.info.version}`, t.info.cpus && trn(t.info.cpus, "{n} CPU", "{n} CPUs"), t.info.containers != null && trn(t.info.containers, "{n} container", "{n} containers")].filter(Boolean).join(" · ")) })}</span></p>`
+    : `<p class="srv-test bad" role="alert">${SVG("xcircle")}<span>${esc(t.error || tr("Couldn't connect"))}</span></p>`;
+  scrim.innerHTML = `<form class="dialog srv-dlg" role="dialog" aria-modal="true" aria-labelledby="srvdlg-t" onsubmit="return false">
+    <header class="srv-dlg-h"><div class="srv-ico">${SVG("harddrive")}</div><div><h3 id="srvdlg-t">${f.id ? tr("Edit server") : tr("Add a server")}</h3><p>${tr("Docker on another machine, over SSH.")}</p></div>
+      <button type="button" class="x" data-sfclose title="${tr("Close")}" aria-label="${tr("Close")}">×</button></header>
+    <div class="srv-dlg-b">
+      <section><h4>${tr("Server")}</h4><div class="srv-fgrid">
+        ${srvF("sf-name", tr("Name"), f.name, "production", "text", true)}
+        ${srvF("sf-host", tr("Address"), f.host, "192.168.1.10")}${srvF("sf-port", tr("SSH port"), f.port, "22", "number")}
+        ${srvF("sf-user", tr("User"), f.user, "root", "text", true)}</div></section>
+      <section><h4>${tr("Sign in")}</h4>${seg2("data-sfauth", tr("SSH key"), tr("Password"), !f.password)}
+        <div class="srv-fgrid">${f.password ? pwField("sf-secret", tr("Password"), f.secret, f.saved && !!f.remember, ' data-pwfor="server"') : srvF("sf-key", tr("Key file"), f.key, tr("Optional: ~/.ssh/id_ed25519"), "text", true)}</div>
+        <p class="srv-hint">${f.password ? tr("Typed once here, or asked at each Connect: see Remember below.") : tr("Uses your SSH keys and agent, as ssh does in Terminal.")}</p></section>
+      <section class="srv-jump${f.jumpOn ? " on" : ""}"><label class="srv-switch"><input type="checkbox" data-sfjump${f.jumpOn ? " checked" : ""}><span class="sw" aria-hidden="true"></span>
+          <span><b>${tr("Connect through a jump host")}</b><small>${tr("For a server only reachable from another one (a bastion), as ssh -J does.")}</small></span></label>
+        ${f.jumpOn ? `<div class="srv-fgrid">${srvF("sj-host", tr("Jump host"), f.jump.host, "bastion.example.com")}${srvF("sj-port", tr("SSH port"), f.jump.port, "22", "number")}
+          ${srvF("sj-user", tr("User"), f.jump.user, "ops", "text", true)}</div>
+          ${seg2("data-sjauth", tr("SSH key"), tr("Password"), !f.jump.password)}
+          <div class="srv-fgrid">${f.jump.password ? pwField("sj-secret", tr("Jump host password"), f.jumpSecret, f.jump_saved && !!f.remember, ' data-pwfor="jump"') : srvF("sj-key", tr("Key file"), f.jump.key, tr("Optional: ~/.ssh/id_ed25519"), "text", true)}</div>` : ""}</section>
+      ${anyPw ? `<section><label class="srv-switch"><input type="checkbox" data-sfremember${f.remember ? " checked" : ""}><span class="sw" aria-hidden="true"></span>
+          <span><b>${tr("Remember passwords")}</b><small>${f.remember ? tr("Connect won't ask for them.") : tr("Asked at each Connect, and never written down.")}</small></span></label>
+        ${f.remember ? `<div class="srv-stores">${["keychain", "file"].filter((k) => stores[k]).map((k) => `<label class="srv-store${f.remember === k ? " on" : ""}"><input type="radio" name="sfstore" value="${k}"${f.remember === k ? " checked" : ""}>
+            <span><b>${esc(STORE_WORD()[k])}</b><small>${k === "keychain" ? (LINUX ? tr("Your desktop's keyring keeps them encrypted, unlocked with your sign-in.") : tr("macOS keeps them encrypted, unlocked with your Mac's sign-in. Recommended.")) : tr("Sealed in ~/.kiri with a key only your account can read.")}</small></span></label>`).join("")}</div>` : ""}</section>` : ""}
+      <details class="srv-adv"${f.socket && f.socket !== "/var/run/docker.sock" ? " open" : ""}><summary>${tr("Advanced")}</summary><div class="srv-fgrid">${srvF("sf-socket", tr("Docker socket"), f.socket, "/var/run/docker.sock", "text", true)}</div></details>
+      ${err}${test}
+    </div>
+    <footer class="srv-dlg-f"><button type="button" class="btn" data-sftest${t?.busy ? " disabled" : ""}>${SVG("lightning")}${tr("Test connection")}</button><span class="grow"></span>
+      <button type="button" class="btn" data-sfclose>${tr("Cancel")}</button><button type="button" class="btn primary" data-sfsave>${tr("Save")}</button></footer></form>`;
+  scrim.querySelectorAll('input[name="sfstore"]').forEach((r) => r.addEventListener("change", () => { srvDraft(); f.remember = r.value; srvDialog(); }));
+  if (focus && $(focus)) { const el = $(focus); el.focus(); try { el.setSelectionRange(sel[0], sel[1]); } catch { /* not a text field */ } }
+}
+function srvSave() { srvDraft(); const f = ui.srv.form; if (!f) return; ui.srv.test = null; send("serversave", { value: formValue(f) }); }
+function srvDlgClick(ev) {
+  const t = (q) => ev.target.closest(q), S = ui.srv, f = S.form;
+  let el;
+  if (ev.target.id === "srvdlg" || t("[data-sfclose]")) { S.form = null; S.error = null; srvDialog(); }
+  else if (t("[data-sfsave]")) srvSave();
+  else if (t("[data-sftest]")) { srvDraft(); S.test = { busy: true }; S.error = null; send("servertest", { value: formValue(f) }); srvDialog(); }
+  else if ((el = t("[data-sfauth]"))) { srvDraft(); f.password = el.dataset.sfauth === "b"; srvDialog(); }
+  else if ((el = t("[data-sjauth]"))) { srvDraft(); f.jump.password = el.dataset.sjauth === "b"; srvDialog(); }
+  else if ((el = t("[data-sfjump]"))) { srvDraft(); f.jumpOn = el.checked; srvDialog(); if (f.jumpOn) $("sj-host")?.focus(); }
+  else if ((el = t("[data-sfremember]"))) { srvDraft(); f.remember = el.checked ? (S.stores?.keychain === false ? "file" : "keychain") : ""; srvDialog(); }
+  else if ((el = t("[data-eye]"))) eyeToggle(el, f);
+}
+/* The eye: shows the field's text; an empty field over a kept password asks for it first. */
+function eyeToggle(btn, f) {
+  const input = $(btn.dataset.eye), show = input.type === "password";
+  if (show && !input.value && f?.id && input.dataset.pwfor && (input.dataset.pwfor === "jump" ? f.jump_saved : f.saved)) {
+    ui.srv.reveal = btn.dataset.eye;
+    send("serversecret", { id: f.id, name: input.dataset.pwfor });
+  }
+  input.type = show ? "text" : "password";
+  btn.setAttribute("aria-pressed", String(show));
+  btn.innerHTML = SVG(show ? "eyeoff" : "eye");
+  btn.title = show ? tr("Hide password") : tr("Show password");
+  input.focus();
+}
+
+/* --- Connect, and the password it may need ------------------------------------------------- */
+/* A password that isn't kept is asked for first, in a small dialog; one that
+   didn't work is asked for again there, saying why. */
+function srvConnectFlow(id) {
+  const x = ui.srv.list.find((y) => y.id === id);
+  if (!x) return;
+  const need = [x.password && !x.saved && "server", x.jump?.password && !x.jump_saved && "jump"].filter(Boolean);
+  if (need.length) return srvPrompt(id, need, "");
+  srvConnect(id, {});
+}
+function srvConnect(id, value) {
+  Object.assign(ui.srv, { prompt: null, error: null, connecting: id });
+  $("srvask")?.remove();
+  send("serverconnect", { id, value });
   render();
 }
+function srvPrompt(id, need, error) {
+  const x = ui.srv.list.find((y) => y.id === id);
+  if (!x) return;
+  ui.srv.prompt = { id, need };
+  $("srvask")?.remove();
+  const scrim = Object.assign(document.createElement("div"), { id: "srvask", className: "scrim" });
+  const fields = need.map((w) => pwField(`sp-${w}`, w === "jump" ? tr("Password for {who}", { who: esc(srvAddr(x.jump)) }) : tr("Password for {who}", { who: esc(srvAddr(x)) }), "", false)).join("");
+  scrim.innerHTML = `<form class="dialog srv-ask" role="dialog" aria-modal="true" aria-labelledby="srvask-t" onsubmit="return false">
+    <header class="srv-dlg-h"><div class="srv-ico">${SVG("lock")}</div><div><h3 id="srvask-t">${tr("Connect to {name}", { name: esc(x.name) })}</h3><p>${x.jump ? tr("Through {jump}", { jump: esc(srvAddr(x.jump)) }) : esc(srvAddr(x))}</p></div></header>
+    ${fields}
+    ${error ? `<p class="srv-err" role="alert">${SVG("warncircle")}<span>${esc(error)}</span></p>` : ""}
+    <label class="srv-check"><input type="checkbox" id="sp-remember"${x.remember ? " checked" : ""}><span>${tr("Remember in {store}", { store: esc(STORE_WORD()[x.remember || (ui.srv.stores?.keychain === false ? "file" : "keychain")]) })}</span></label>
+    <div class="row-end"><span></span><span><button type="button" class="btn" data-spx>${tr("Cancel")}</button> <button type="button" class="btn primary" data-spgo>${SVG("plug")}${tr("Connect")}</button></span></div></form>`;
+  const go = () => {
+    const value = { password: $("sp-server")?.value || "", jump: $("sp-jump")?.value || "" };
+    if ($("sp-remember").checked) value.remember = x.remember || (ui.srv.stores?.keychain === false ? "file" : "keychain");
+    srvConnect(id, value);
+  };
+  const close = () => { ui.srv.prompt = null; scrim.remove(); };
+  scrim.addEventListener("click", (ev) => {
+    const el = ev.target.closest("[data-eye]");
+    if (ev.target === scrim || ev.target.closest("[data-spx]")) close();
+    else if (ev.target.closest("[data-spgo]")) go();
+    else if (el) eyeToggle(el, null);
+  });
+  scrim.addEventListener("keydown", (ev) => { if (ev.key === "Escape") close(); else if (ev.key === "Enter") { ev.preventDefault(); go(); } });
+  document.body.append(scrim);
+  scrim.querySelector("input")?.focus();
+}
+
 /* The engine's lists while the window moves to a server (or back to Kiri), or
    when the server didn't answer: never "No containers yet" for lists not read. */
 function engineWaiting(v = ui.view) { return ["containers", "images", "volumes", "networks", "builds"].includes(v) && !!(ui.srv.loading || ui.srv.listErr); }
@@ -5017,31 +5512,57 @@ function renderEngineWait(v) {
 function srvClick(ev) {
   const t = (q) => ev.target.closest(q), S = ui.srv;
   let el;
-  if (t("[data-srvadd]")) { S.form = { name: "", host: "", user: "", port: 22, key: "", socket: "", password: false }; S.error = null; render(); $("srv-name")?.focus(); }
-  else if (t("[data-srvcancel]")) { S.form = null; S.error = null; render(); }
-  else if ((el = t("[data-srvauth]"))) { srvDraft(); S.form.password = el.dataset.srvauth === "pw"; render(); }
-  else if (t("[data-srvsave]")) { srvDraft(); send("serversave", { value: { ...S.form, port: String(S.form.port || "") } }); }
-  else if ((el = t("[data-srvedit]"))) { const x = S.list.find((y) => y.id === el.dataset.srvedit); if (x) { S.form = { ...x }; S.error = null; render(); } }
+  if (t("[data-srvadd]")) srvOpenForm(null);
+  else if ((el = t("[data-srvlay]"))) setPref("serversLayout", el.dataset.srvlay);
+  else if ((el = t("[data-srvedit]"))) { const x = S.list.find((y) => y.id === el.dataset.srvedit); if (x) srvOpenForm(x); }
   else if ((el = t("[data-srvdel]"))) {
     const x = S.list.find((y) => y.id === el.dataset.srvdel);
-    if (x) confirmRemove(tr("Delete {name}?", { name: esc(x.name) }), tr("Only the bookmark goes: nothing changes on the server."), tr("Delete"), () => send("serverdelete", { id: x.id }));
+    if (x) confirmRemove(tr("Delete {name}?", { name: esc(x.name) }), tr("Only the bookmark and its kept passwords go: nothing changes on the server."), tr("Delete"), () => send("serverdelete", { id: x.id }));
   }
-  else if ((el = t("[data-srvcon]"))) { const x = S.list.find((y) => y.id === el.dataset.srvcon); if (!x) return; if (x.password) { S.pw = x.id; S.error = null; render(); } else srvConnect(x.id); }
-  else if ((el = t("[data-srvgo]"))) srvConnect(el.dataset.srvgo, $("srv-pass")?.value || "");
-  else if (t("[data-srvpwx]")) { S.pw = null; render(); }
-  else if (t("[data-srvoff]")) { send("serverdisconnect"); }
+  else if ((el = t("[data-srvcon]"))) srvConnectFlow(el.dataset.srvcon);
+  else if (t("[data-srvoff]")) send("serverdisconnect");
   else return false;
   return true;
 }
-$("content").addEventListener("keydown", (ev) => {
-  if (ev.key !== "Enter" || ui.view !== "servers") return;
-  if (ev.target.id === "srv-pass" && ui.srv.pw) { ev.preventDefault(); srvConnect(ui.srv.pw, ev.target.value); }
-  else if (ev.target.closest?.("#srv-form input")) { ev.preventDefault(); document.querySelector("[data-srvsave]")?.click(); }
-});
+
+/* --- the engine switcher, atop the sidebar -------------------------------------------------- */
+function paintSwitcher() {
+  const b = $("engsw");
+  if (!b) return;
+  const cur = srvCur(), busy = ui.srv.connecting && ui.srv.list.find((x) => x.id === ui.srv.connecting);
+  $("engsw-name").textContent = busy ? busy.name : cur ? cur.name : "Kiri";
+  $("engsw-sub").textContent = busy ? tr("Connecting…") : cur ? srvAddr(cur) : tr("This {host}", { host: tr(HOST) });
+  b.querySelector(".engsw-ico").innerHTML = SVG(cur || busy ? "harddrive" : "cube");
+  b.classList.toggle("remote", !!cur); b.classList.toggle("busy", !!busy);
+  b.title = cur ? tr("On {name}: switch engine", { name: cur.name }) : tr("Switch engine");
+}
+function openSwitcher(b) {
+  const S = ui.srv, tick = (on) => `<span class="engmi-tick">${on ? CHECK : ""}</span>`;
+  const items = [[`${tick(!S.on)}<span class="engmi"><b>Kiri</b><small>${tr("This {host}", { host: tr(HOST) })}</small></span>`, 'data-eng=""'],
+    ...S.list.map((x) => [`${tick(S.on === x.id)}<span class="engmi"><b>${esc(x.name)}</b><small>${esc(srvAddr(x))}${x.jump ? ` · ${tr("via {jump}", { jump: esc(x.jump.host) })}` : ""}</small></span>`, `data-eng="${esc(x.id)}"`]),
+    [`<span class="engmi-tick">${SVG("sliders")}</span><span class="engmi"><b>${tr("Manage servers…")}</b></span>`, 'data-eng="@manage"', "engmi-sep"]];
+  showMenu(b, items);
+  document.querySelector(".menu")?.classList.add("engmenu");
+}
+function engPick(id) {
+  if (id === "@manage") return show("servers");
+  if (!id) { if (ui.srv.on) send("serverdisconnect"); return; }
+  if (id !== ui.srv.on) srvConnectFlow(id);
+}
+
 function srvEvent(e) {
   const S = ui.srv, was = S.on;
-  if (e.type === "serversaved") { S.form = null; S.error = null; return; }
+  if (e.type === "serversaved") { S.form = null; S.error = null; S.test = null; srvDialog(); return; }
+  if (e.type === "servertest") { S.test = e.ok ? { ok: true, info: e.info || {} } : { ok: false, error: e.error || (e.need ? tr("Type the password to test it") : "") }; srvDialog(); return; }
+  if (e.type === "serversecret") {
+    const input = S.reveal && $(S.reveal);
+    if (input && e.secret != null) { input.value = e.secret; input.type = "text"; }
+    S.reveal = null; return;
+  }
   S.list = e.servers || []; S.on = e.current || null; S.connecting = e.connecting || null; S.error = e.error || null;
+  if (e.stores) S.stores = e.stores;
+  // A password the connection needs: asked for, saying why when one didn't work.
+  if (S.error?.need && S.error.id) srvPrompt(S.error.id, [S.error.need], S.error.text);
   if (S.form?.id && !S.list.some((x) => x.id === S.form.id)) S.form = null;
   // Another engine: the lists, a container's page and the pick are the old one's.
   if (was !== S.on) {
@@ -5050,20 +5571,133 @@ function srvEvent(e) {
     S.loading = { name: cur ? cur.name : "Kiri", ssh: !!cur }; S.listErr = null;
     Object.assign(ui.bl, { items: null, sel: null, d: null, layers: null, error: "" });
     if (ui.view === "builds") send("builds");
+    ui.pr.procs = null;
   }
   document.body.classList.toggle("remote", !!S.on);
   const cur = srvCur(), on = $("docker-on");
   on.hidden = !cur; on.textContent = cur ? `· ${cur.name}` : ""; on.title = cur ? srvAddr(cur) : "";
   $("n-servers").textContent = S.list.length || "";
-  paintEngine(); render();
+  if (S.form) srvDialog();
+  paintSwitcher(); paintEngine(); render();
 }
+
+/* --- Processes: what Kiri is doing, what it runs here, what runs in the containers ---------- */
+/* Each task the app says it's doing (activity.rs), with the page's own
+   progress where it has one (a pull's bytes, a build's steps), and the work
+   only the page knows of (removing many, a scan, an update's download). */
+const TASK_WORD = {
+  start: ["Starting {x}", "play"], stop: ["Stopping {x}", "stop"], restart: ["Restarting {x}", "restart"], pause: ["Pausing {x}", "pause"],
+  unpause: ["Resuming {x}", "play"], remove: ["Removing {x}", "trash"], pull: ["Pulling {x}", "pull"], run: ["Starting a container from {x}", "play"],
+  rmi: ["Removing image {x}", "trash"], rmvol: ["Removing volume {x}", "trash"], rmnet: ["Removing network {x}", "trash"],
+  ports: ["Changing the ports of {x}", "plug"], env: ["Changing the environment of {x}", "sliders"], domains: ["Changing local names", "globe"],
+  connect: ["Connecting to {x}", "plug"], test: ["Testing the connection to {x}", "lightning"],
+};
+/* i18n */ void [tr("Starting {x}"), tr("Stopping {x}"), tr("Restarting {x}"), tr("Pausing {x}"), tr("Resuming {x}"), tr("Removing {x}"), tr("Pulling {x}"), tr("Starting a container from {x}"), tr("Removing image {x}"), tr("Removing volume {x}"), tr("Removing network {x}"), tr("Changing the ports of {x}"), tr("Changing the environment of {x}"), tr("Changing local names"), tr("Connecting to {x}"), tr("Testing the connection to {x}")];
+function taskList() {
+  const P = ui.pr, out = [], skew = P.skew || 0;
+  const named = (id) => { const c = ui.containers.find((x) => x.Id.startsWith(id)); return c ? cname(c) : id; };
+  for (const t of P.tasks) {
+    const [w, icon] = TASK_WORD[t.kind] || [t.kind, "lightning"];
+    const target = ["start", "stop"].includes(t.kind) && !t.target ? "" : ["start", "stop", "restart", "pause", "unpause", "remove", "ports", "env"].includes(t.kind) ? named(t.target) : t.target;
+    const title = !target && t.kind === "start" ? tr("Starting {vm}", { vm: tr(VM) }) : !target && t.kind === "stop" ? tr("Stopping {vm}", { vm: tr(VM) }) : tr(w, { x: esc(target) });
+    const pull = t.kind === "pull" && [...ui.pulls.values()].find((p) => t.target.startsWith(p.name) || p.name.startsWith(t.target));
+    const pct = pull?.total ? Math.min(100, Math.round(pull.got / pull.total * 100)) : null;
+    out.push({ key: `t${t.id}`, icon, title, sub: [t.server ? tr("on {name}", { name: esc(t.server) }) : "", pull?.total ? `${size(pull.got)} / ${size(pull.total)}` : ""].filter(Boolean).join(" · "),
+      since: t.started - skew, pct, cancel: pull && pull.phase !== "done" ? pull.name : "" });
+  }
+  for (const b of (ui.bl.items || []).filter((x) => x.status === "Running"))
+    out.push({ key: `b${b.id}`, icon: "hammer", title: tr("Building {x}", { x: esc(b.name || b.id) }), sub: b.steps ? tr("Step {n} of {all}", { n: b.done || 0, all: b.steps }) : "", since: Date.parse(b.started) || Date.now(), pct: b.steps ? Math.round((b.done || 0) / b.steps * 100) : null });
+  for (const b of ui.batches.filter((x) => x.phase === "going"))
+    out.push({ key: `r${b.view}`, icon: "trash", title: tr("Removing {n} {what}", { n: b.n, what: tr(b.view) }), sub: tr("{gone} of {n}", { gone: b.gone, n: b.n }), since: b.at || Date.now(), pct: Math.round(b.gone / b.n * 100) });
+  for (const [name, s] of ui.scans) if (s.running) out.push({ key: `s${name}`, icon: "shieldcheck", title: tr("Scanning {x}", { x: esc(name) }), sub: s.phase || "", since: s.at || Date.now(), pct: s.pct ?? null });
+  if (ui.upd?.phase === "downloading") out.push({ key: "upd", icon: "pull", title: tr("Downloading Kiri {v}", { v: esc(ui.upd.version) }), sub: ui.upd.total ? `${size(ui.upd.got)} / ${size(ui.upd.total)}` : "", since: ui.upd.t0 || Date.now(), pct: ui.upd.total ? Math.round(ui.upd.got / ui.upd.total * 100) : null });
+  return out;
+}
+const dur = (ms) => { const s = Math.max(0, Math.round(ms / 1000)); return s < 60 ? `${s} s` : s < 3600 ? `${Math.floor(s / 60)} min ${s % 60} s` : `${Math.floor(s / 3600)} h ${Math.floor(s % 3600 / 60)} min`; };
+const durS = (s) => (s < 60 ? `${s} s` : s < 3600 ? `${Math.floor(s / 60)} min` : s < 86400 ? `${Math.floor(s / 3600)} h ${Math.floor(s % 3600 / 60)} min` : `${Math.floor(s / 86400)} d ${Math.floor(s % 86400 / 3600)} h`);
+const memKib = (k) => (k == null ? "—" : k >= 1048576 ? `${(k / 1048576).toFixed(1)} GB` : k >= 1024 ? `${Math.round(k / 1024)} MB` : `${k} KB`);
+const KIND_WORD = { window: ["Kiri window", "sidebar"], engine: ["Kiri engine", "cube"], tunnel: ["SSH tunnel to {x}", "link"], jump: ["Jump host link to {x}", "link"], shell: ["Terminal shell", "keyboard"], child: ["{x}", "lightning"] };
+/* i18n */ void [tr("Kiri window"), tr("Kiri engine"), tr("SSH tunnel to {x}"), tr("Jump host link to {x}"), tr("Terminal shell")];
+function prTabs() {
+  const P = ui.pr, n = taskList().length, np = (P.procs?.containers || []).reduce((a, c) => a + c.procs.length, 0);
+  return `<div class="seg pr-seg" role="tablist">${[["tasks", tr("Activity"), n], ["procs", tr("Container processes"), P.procs ? np : ""]].map(([k, w, c]) =>
+    `<button role="tab" data-prtab="${k}" aria-selected="${P.tab === k}" aria-pressed="${P.tab === k}">${w}${c !== "" ? `<span class="n">${c}</span>` : ""}</button>`).join("")}</div>`;
+}
+function renderProcesses() {
+  const P = ui.pr, c = $("content");
+  $("hright").innerHTML = `${prTabs()}<span class="pr-live" title="${tr("Updated every few seconds while this page is open")}"><i></i>${tr("Live")}</span>`;
+  $("subtitle").textContent = srvCur() ? tr("on {name}", { name: srvCur().name }) : "";
+  if (P.tab === "procs") return renderContainerProcs();
+  const tasks = taskList();
+  const task = (t) => `<li class="pr-task" data-key="${esc(t.key)}"><span class="pr-ico">${SVG(t.icon)}</span>
+      <div class="pr-main"><div class="pr-t"><b>${t.title}</b><span class="muted num" data-since="${t.since}">${dur(Date.now() - t.since)}</span></div>
+        ${t.pct != null ? `<div class="pr-bar"><span style="width:${t.pct}%"></span></div>` : `<div class="pr-bar indet"><span></span></div>`}
+        ${t.sub ? `<div class="pr-sub muted">${t.sub}</div>` : ""}</div>
+      ${t.cancel ? `<button class="btn sm" data-pcancel="${esc(t.cancel)}">${tr("Cancel")}</button>` : ""}</li>`;
+  const procs = P.mine || [];
+  const prow = (p) => {
+    const [w, icon] = KIND_WORD[p.kind] || ["{x}", "lightning"];
+    const name = p.kind === "child" ? esc(p.name) : tr(w, { x: esc(p.name) });
+    return `<tr class="row"><td><div class="name"><span class="pr-ico sm">${SVG(icon)}</span><div><div>${name}</div><div class="sub mono muted" title="${esc(p.cmd)}">${esc(p.cmd)}</div></div></div></td>
+      <td class="mono num">${p.pid}</td><td class="num">${(+p.cpu).toFixed(1)}%</td><td class="num">${memKib(p.rss_kib)}</td><td class="num muted">${durS(p.secs)}</td>
+      <td class="actions"><div class="acts-row">${p.kind === "tunnel" ? `<button class="btn sm" data-srvoff>${tr("Disconnect")}</button>` : ""}</div></td></tr>`;
+  };
+  c.innerHTML = `<section class="pr-sec"><h4>${tr("In progress")}<span class="n">${tasks.length}</span></h4>
+      ${tasks.length ? `<ul class="pr-tasks">${tasks.map(task).join("")}</ul>` : `<div class="pr-none">${SVG("checkcircle")}<span>${tr("Nothing is running right now. Pulls, builds, starts, stops and connections show here while they run.")}</span></div>`}</section>
+    <section class="pr-sec"><h4>${tr("Kiri on this {host}", { host: tr(HOST) })}<span class="n">${procs.length}</span></h4>
+      ${!P.mine ? `<p class="muted">${tr("Loading…")}</p>` : `<table class="pr-table"><thead><tr><th>${tr("Process")}</th><th>PID</th><th class="r">CPU</th><th class="r">${tr("Memory")}</th><th class="r">${tr("Running for")}</th><th></th></tr></thead><tbody>${procs.map(prow).join("")}</tbody></table>`}</section>`;
+}
+function renderContainerProcs() {
+  const P = ui.pr, c = $("content"), q = ui.filter.toLowerCase();
+  if (!P.procs) { c.innerHTML = `<div class="empty"><div><span class="hspin big" aria-hidden="true"></span><h3>${tr("Reading the processes…")}</h3></div></div>`; return; }
+  if (P.procs.error) { c.innerHTML = `<div class="empty"><div>${SVG("warncircle", "art")}<h3>${tr("Couldn't read the processes")}</h3><p>${esc(P.procs.error)}</p></div></div>`; return; }
+  const groups = P.procs.containers || [];
+  if (!groups.length) { c.innerHTML = `<div class="empty"><div>${SVG("cube", "art")}<h3>${tr("No containers are running")}</h3><p>${tr("Start one and its processes show here, live.")}</p></div></div>`; return; }
+  const hit = (g, p) => !q || `${g.name} ${g.image} ${p.cmd} ${p.user} ${p.pid}`.toLowerCase().includes(q);
+  const shown = groups.map((g) => ({ ...g, rows: g.procs.filter((p) => hit(g, p)) })).filter((g) => g.rows.length || (!q && g.error));
+  if (!shown.length) return noMatch();
+  const cpuOf = (p) => (p.cpu == null ? "—" : `${p.cpu}${/%|\./.test(p.cpu) || P.procs.server ? "%" : ""}`);
+  const body = shown.map((g) => `<tr class="pr-group"><td colspan="6"><div class="name">${tile(ui.containers.find((x) => x.Id === g.id)?.icon || null, "cube")}<div><b>${esc(g.name)}</b><span class="muted"> · ${esc(refLabel(g.image || ""))} · ${trn(g.procs.length, "{n} process", "{n} processes")}</span></div></div>${g.error ? `<span class="err">${esc(g.error)}</span>` : ""}</td></tr>`
+    + g.rows.map((p) => `<tr class="row"><td class="mono num">${esc(p.pid || "")}</td><td class="muted">${esc(p.user || "")}</td><td class="num">${esc(cpuOf(p))}</td><td class="num">${memKib(p.rss_kib)}</td><td class="num muted">${esc(p.time || "")}</td><td class="mono pr-cmd" title="${esc(p.cmd || "")}">${esc(p.cmd || "")}</td></tr>`).join("")).join("");
+  c.innerHTML = `<table class="pr-table procs"><thead><tr><th>PID</th><th>${tr("User")}</th><th class="r">CPU</th><th class="r">${tr("Memory")}</th><th class="r">${tr("Time")}</th><th>${tr("Command")}</th></tr></thead><tbody>${body}</tbody></table>`;
+}
+/* While Processes is open: Kiri's processes every 2 s, or the containers' every 3 s. */
+function prPoll() {
+  clearTimeout(ui.pr.timer);
+  if (ui.view !== "processes" || document.hidden) return;
+  send(ui.pr.tab === "procs" ? "procs" : "kiriprocs");
+  ui.pr.timer = setTimeout(prPoll, ui.pr.tab === "procs" ? 3000 : 2000);
+}
+function prEvent(e) {
+  const P = ui.pr;
+  if (e.type === "tasks") { P.tasks = e.tasks || []; P.skew = e.now ? e.now - Date.now() : 0; paintTaskCount(); }
+  else if (e.type === "kiriprocs") P.mine = e.procs || [];
+  else if (e.type === "procs") { if ((e.server ?? null) !== ui.srv.on) return; P.procs = e; }
+  if (ui.view === "processes") render();
+}
+/* The sidebar's count and the status bar's chip: what's under way. */
+function paintTaskCount() {
+  const n = taskList().length, el = $("n-processes");
+  if (el) el.textContent = n || "";
+  renderStatus();
+}
+const tasksItem = () => {
+  const n = taskList().length;
+  return n ? `<span class="sep">·</span><button class="item tasks" data-status-go="processes" title="${tr("Show what's running")}"><span class="hspin" aria-hidden="true"></span>${trn(n, "{n} task", "{n} tasks")}</button>` : "";
+};
+setInterval(() => {
+  if (ui.view !== "processes" || ui.pr.tab !== "tasks") return;
+  document.querySelectorAll("#content [data-since]").forEach((el) => { el.textContent = dur(Date.now() - +el.dataset.since); });
+}, 1000);
+/*/UNIX*/
 
 function renderNetworks() {
   const items = listed("networks");
   if (!kept("networks").length) return renderEmpty("networks");
   if (!items.length) return noMatch();
-  table([[tr("Name")], [tr("Driver")], [tr("Subnet")], [tr("Created")]], items.map((n) => `<tr class="row${chosen("networks", n)}" data-key="${esc(n.Id)}"${pickAt("networks", n)}>
-    ${pickCell("networks", n)}<td><div class="name">${tile(null, "network")}${esc(n.Name)}</div></td>
+  table([[tr("Name")], [tr("Used by")], [tr("Driver")], [tr("Subnet")], [tr("Created")]], items.map((n) => `<tr class="row${chosen("networks", n)}" data-key="${esc(n.Id)}"${pickAt("networks", n)}>
+    ${pickCell("networks", n)}<td><div class="name">${tile(null, "network")}${esc(n.Name)}${BUILTIN_NETS.has(n.Name) ? `<span class="tagpill">${tr("built in")}</span>` : ""}</div></td>
+    ${usersCell(netUsers(n))}
     <td class="muted">${esc(n.Driver)}</td>
     <td class="mono muted">${esc(n.IPAM?.Config?.[0]?.Subnet || "—")}</td>
     <td class="muted">${n.Created && !n.Created.startsWith("1970") ? ago(Date.parse(n.Created) / 1000) : ""}</td>
@@ -5466,6 +6100,7 @@ function renderStatus() {
     usageItem(),
     updateChip(),
     pullItem(),
+    tasksItem(),
     htStatusItem(),
     `<span class="grow"></span>`,
     shareOn() ? shStatusItem() : "",
@@ -5541,9 +6176,10 @@ function aboutUpdate(version) {
   } else row = `<span>${tr("Version {version}", { version: v })}</span>${check}`;
   const notes = u?.phase === "available" && u.notes.trim() ? `<div class="updnotes"><b>${tr("What's new in {version}", { version: esc(u.version) })}</b>${notesHtml(u.notes)}</div>` : "";
   const fixed = s?.state === "test" || s?.state === "dev";
-  const auto = prefs.updateAuto !== false;
+  const auto = prefs.updateAuto === true, star = prefs.starPrompt === true;
   return `<div class="updrow">${row}</div>${notes}${fixed ? "" : `<div class="pref"><span class="t">${tr("Check for updates automatically")}</span><span class="d">${auto ? tr("On: Kiri checks each time it opens. It never updates without asking.") : tr("Off: Kiri checks only when you click Check now.")}</span>
-      <div class="seg" role="group" aria-label="${tr("Check for updates automatically")}"><button data-updauto="0" aria-pressed="${!auto}">${tr("Off")}</button><button data-updauto="1" aria-pressed="${auto}">${tr("On")}</button></div></div>`}`;
+      <div class="seg" role="group" aria-label="${tr("Check for updates automatically")}"><button data-updauto="0" aria-pressed="${!auto}">${tr("Off")}</button><button data-updauto="1" aria-pressed="${auto}">${tr("On")}</button></div></div>`}<div class="pref"><span class="t">${tr("Suggest a star on GitHub")}</span><span class="d">${star ? tr("On: once, after something first works, a card asks for a star.") : tr("Off: Kiri never asks.")}</span>
+      <div class="seg" role="group" aria-label="${tr("Suggest a star on GitHub")}"><button data-starpref="0" aria-pressed="${!star}">${tr("Off")}</button><button data-starpref="1" aria-pressed="${star}">${tr("On")}</button></div></div>`;
 }
 
 function renderUpdate() {
@@ -5689,7 +6325,7 @@ function render() {
   document.querySelectorAll("nav button").forEach((b) => (b.dataset.view === v ? b.setAttribute("aria-current", "page") : b.removeAttribute("aria-current")));
   if (v === "usb") setHTML($("title"), `USB<span class="beta" title="${esc(tr("USB passthrough is new: tell us how it works with your devices"))}">${tr("Beta")}</span>`);
   else $("title").textContent = tr(v[0].toUpperCase() + v.slice(1));
-  /* i18n */ void [tr("docker flag"), tr("Containers"), tr("Images"), tr("Volumes"), tr("Networks"), tr("Builds"), tr("Pods"), tr("Services"), tr("Settings"), tr("Share")];
+  /* i18n */ void [tr("Processes"), tr("processes"), tr("docker flag"), tr("Containers"), tr("Images"), tr("Volumes"), tr("Networks"), tr("Builds"), tr("Pods"), tr("Services"), tr("Settings"), tr("Share")];
   const running = ui.containers.filter((c) => c.State === "running").length;
   const total = kept("images").reduce((a, i) => a + (i.Size || 0), 0);
   // A list's counts are its tabs; beside them, what they don't say (the images' size).
@@ -5708,7 +6344,7 @@ function render() {
   // Builds is not in the sidebar on Windows.
   const nBuilds = $("n-builds"); if (nBuilds) nBuilds.textContent = ui.bl.items ? ui.bl.items.length : "";
   // The strip's search narrows the list on screen; it names what it searches.
-  $("gq").placeholder = ["containers", "images", "volumes", "networks", "builds", "pods", "services"].includes(v) && !ui.detail && !ui.imgd ? tr("Search {view}…", { view: tr(v) }) : tr("Search Kiri…");
+  $("gq").placeholder = ["containers", "images", "volumes", "networks", "builds", "pods", "services", "processes"].includes(v) && !ui.detail && !ui.imgd ? tr("Search {view}…", { view: tr(v) }) : tr("Search Kiri…");
   /* i18n */ void [tr("containers"), tr("images"), tr("volumes"), tr("networks"), tr("builds"), tr("pods"), tr("services")];
   // A connection's pane belongs to the Share view; any other view takes the page back.
   if (v !== "share") { $("sh-pane")?.remove(); $("content").hidden = false; }
@@ -5717,6 +6353,7 @@ function render() {
   // The devices are the computer's: listed whether the engine runs or not.
   if (v === "usb") return renderUsb();
   if (v === "servers") return renderServers();
+  if (v === "processes") return renderProcesses();
   if (engineWaiting(v)) return renderEngineWait(v);
   if (ui.vm === "stopped") return renderEmpty("stopped");
   if (v === "containers" && ui.detail) {
@@ -6436,14 +7073,14 @@ function closable(el, close) {
   el.querySelector(".tclose").addEventListener("click", (ev) => { ev.stopPropagation(); close(); });
 }
 
-/* Star Kiri, asked once ever: the first time something works (a container
+/* Star Kiri, asked once ever and only when Settings → About turns it on: the first time something works (a container
    started, a pull done, a share link live, Kubernetes up), a card a moment
    after that toast. ui.json keeps starAsked, so it never comes back. */
 const STAR_URL = "https://github.com/libracoder/kiri";
 const STAR_IC = `<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 2.6l2.9 6 6.6.8-4.9 4.5 1.3 6.5L12 17.2l-5.9 3.2 1.3-6.5-4.9-4.5 6.6-.8Z"/></svg>`;
 let prefsIn = false, starTimer = 0;
 function starMoment(text) {
-  if (!prefsIn || prefs.starAsked || starTimer) return;
+  if (!prefsIn || prefs.starPrompt !== true || prefs.starAsked || starTimer) return;
   starTimer = setTimeout(() => starCard(text), 2500);
 }
 function starCard(text) {
@@ -6859,7 +7496,8 @@ window.kiri = {
         if (ui.openAfter && ui.containers.some((c) => c.Id === ui.openAfter)) { openDetail(ui.openAfter); ui.openAfter = null; openedTab(); }
         break;
       case "pull": pullEvent(e); break;
-      case "servers": case "serversaved": srvEvent(e); break;
+      case "servers": case "serversaved": case "servertest": case "serversecret": srvEvent(e); break;
+      case "tasks": case "kiriprocs": case "procs": prEvent(e); break;
       case "usb": usbList(e); break;
       case "usbdone": usbDone(e); break;
       case "buildpruned": ui.bwPruning = false; toast(e.error ? "error" : "ok", e.error ? tr("Couldn't clear the build cache: {error}", { error: e.error }) : e.freed ? tr("Build cache cleared: freed {size}", { size: size(e.freed) }) : tr("Build cache cleared")); if (ui.view === "settings") render(); break;
@@ -7021,6 +7659,7 @@ $("content").addEventListener("click", (ev) => {
   // A click on a resize edge, or the one that ends a drag, doesn't sort.
   if (t(".col-resize") || Date.now() - (ui.resizedAt || 0) < 300) return;
   if (ui.view === "servers" && srvClick(ev)) return;
+  if (t("[data-srvoff]")) { send("serverdisconnect"); return; }
   if (t("[data-srvretry]")) { const cur = srvCur(); ui.srv.listErr = null; ui.srv.loading = { name: cur ? cur.name : "Kiri", ssh: !!cur }; send("refresh"); render(); return; }
   if ((el = t("[data-pull]"))) pullRef(el.dataset.pull);
   else if ((el = t("[data-pretry]"))) pullRef(el.dataset.pretry);
@@ -7043,7 +7682,7 @@ $("content").addEventListener("click", (ev) => {
   else if ((el = t("[data-golive]"))) viewContainer(el.dataset.golive);
   else if ((el = t("[data-run]"))) ui.need?.image === el.dataset.run ? needClose() : runImage(el.dataset.run);
   else if ((el = t("[data-c]"))) containerAction(el.dataset.c, el.dataset.id);
-  else if ((el = t("[data-rmvol]"))) { const v = el.dataset.rmvol; confirmRemove(tr("Remove volume {name}?", { name: esc(v) }), tr("Its data is deleted for good."), tr("Remove"), () => send("rmvol", { name: v })); }
+  else if ((el = t("[data-rmvol]"))) removeVolume(el.dataset.rmvol);
   else if ((el = t("[data-usbgo]"))) usbAct(el.dataset.usbgo, el.dataset.key);
   else if ((el = t("[data-usbtab]"))) { ui.usb.tab = el.dataset.usbtab; render(); }
   else if ((el = t("[data-usbmore]")) || ((el = t("tr[data-usbrow]")) && !t("button, a, input, .copy"))) {
@@ -7052,7 +7691,7 @@ $("content").addEventListener("click", (ev) => {
     render();
   }
   else if (t("[data-usbbeta]")) setPref("usbBetaClosed", true);
-  else if ((el = t("[data-rmnet]"))) { const id = el.dataset.rmnet, n = ui.networks.find((x) => x.Id === id); confirmRemove(tr("Remove network {name}?", { name: esc(n?.Name || short(id)) }), "", tr("Remove"), () => send("rmnet", { id })); }
+  else if ((el = t("[data-rmnet]"))) removeNetwork(el.dataset.rmnet);
   else if ((el = t("[data-listenpub]"))) publishListening(el.dataset.listenpub);
   else if ((el = t("[data-open]"))) send("open", { name: el.dataset.open });
   else if ((el = t("[data-ports]"))) openPorts(el.dataset.ports);
@@ -7080,6 +7719,7 @@ $("content").addEventListener("click", (ev) => {
   else if ((el = t("[data-open-site]"))) send("open", { name: el.dataset.openSite });
   else if ((el = t("[data-updcheck]"))) { ui.updState = { ...(ui.updState || {}), checking: true }; send("updatecheck"); render(); }
   else if ((el = t("[data-updauto]"))) setPref("updateAuto", el.dataset.updauto === "1");
+  else if ((el = t("[data-starpref]"))) setPref("starPrompt", el.dataset.starpref === "1");
   else if ((el = t("[data-upd]"))) updateAction(el.dataset.upd);
   else if ((el = t("[data-https]"))) { if (!!+el.dataset.https !== !!ui.https) send("https", { value: !!+el.dataset.https }); }
   else if ((el = t("[data-impsrc]"))) { ui.imp.source = el.dataset.impsrc; ui.imp.inv = null; resetPicks(); const s = ui.imp.sources.find((x) => x.id === ui.imp.source); if (s?.running) send("inventory", { name: s.id }); render(); }
@@ -7158,6 +7798,9 @@ document.addEventListener("keydown", (ev) => {
     f.focus(); f.select();
   }
 });
+$("engsw")?.addEventListener("click", (ev) => { ev.stopPropagation(); if (document.querySelector(".menu.engmenu")) return closeMenu(); closeMenu(); openSwitcher(ev.currentTarget); });
+document.addEventListener("visibilitychange", () => { if (!document.hidden && ui.view === "processes") prPoll(); });
+paintSwitcher();
 $("vm-toggle").addEventListener("click", () => srvCur() ? send("serverdisconnect") : powerEngine(engineShown().shown === "running" ? "stop" : "start"));
 
 /* Window chrome: a mouse-down on empty header or sidebar space drags the
@@ -8915,12 +9558,18 @@ const LISTS = {
     primary: () => `<button class="btn primary" data-ppopen aria-haspopup="dialog" aria-expanded="${pp.open}" title="${tr("Pull an image ({key})", { key: PP_KEY })}">${svgOf("pull")}${tr("Pull image")}</button>`,
   },
   volumes: {
-    all: () => ui.volumes || [], key: (v) => v.Name, name: (v) => v.Name, hit: (v) => match(v.Name), noun: "volumes",
-    remove: (v) => send("rmvol", { name: v.Name }), bulk: [["Delete", "trash", "danger", () => true]],
+    all: () => ui.volumes || [], key: (v) => v.Name, name: (v) => v.Name, hit: (v) => match(v.Name, ...volUsers(v).map(cname)), noun: "volumes",
+    state: (v) => (volUsers(v).length ? "inuse" : "unused"),
+    tabs: [["inuse", "In use", "moss"], ["unused", "Unused", ""]],
+    // The engine won't remove a volume a container has: Delete leaves those.
+    remove: (v) => send("rmvol", { name: v.Name }), bulk: [["Delete", "trash", "danger", (v) => !volUsers(v).length]],
   },
   networks: {
-    all: () => ui.networks, key: (n) => n.Id, name: (n) => n.Name, hit: (n) => match(n.Name), noun: "networks", can: (n) => !BUILTIN_NETS.has(n.Name),
-    remove: (n) => send("rmnet", { id: n.Id }), bulk: [["Delete", "trash", "danger", () => true]],
+    all: () => ui.networks, key: (n) => n.Id, name: (n) => n.Name, hit: (n) => match(n.Name, ...netUsers(n).map(cname)), noun: "networks", can: (n) => !BUILTIN_NETS.has(n.Name),
+    state: (n) => (netUsers(n).length ? "inuse" : "unused"),
+    tabs: [["inuse", "In use", "moss"], ["unused", "Unused", ""]],
+    // Delete leaves the networks a container is on: removing one is a choice made one at a time.
+    remove: (n) => send("rmnet", { id: n.Id }), bulk: [["Delete", "trash", "danger", (n) => !netUsers(n).length]],
   },
   builds: {
     all: () => ui.bl.items || [], key: (x) => x.id, name: (x) => x.name || x.id, hit: (x) => match(x.name, x.id), noun: "builds",
@@ -9029,6 +9678,8 @@ $("ltabs").addEventListener("click", (ev) => {
 });
 $("hright").addEventListener("click", (ev) => {
   if (ui.view === "servers" && srvClick(ev)) return;
+  const prt = ev.target.closest("[data-prtab]");
+  if (prt) { ui.pr.tab = prt.dataset.prtab; ui.filter = ""; $("gq").value = ""; render(); prPoll(); return; }
   const t = (q) => ev.target.closest(q), v = ui.view, L = LISTS[v];
   let el;
   if (t("[data-ppopen]")) pp.open ? closePull() : openPull();
@@ -9146,7 +9797,7 @@ document.addEventListener("keydown", (ev) => {
    when they're gone. Not asked (Delete on picked rows), a toast says so with
    Undo, which puts them back; when it goes, so do they. */
 function newBatch(v, xs, what) {
-  const L = LISTS[v], b = { view: v, keys: new Set(xs.map(L.key)), items: xs, n: xs.length, gone: 0, phase: "held", what };
+  const L = LISTS[v], b = { view: v, keys: new Set(xs.map(L.key)), items: xs, n: xs.length, gone: 0, phase: "held", what, at: Date.now() };
   ui.batches.push(b);
   ui.pick.keys.clear();
   return b;

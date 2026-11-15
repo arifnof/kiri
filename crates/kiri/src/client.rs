@@ -85,6 +85,28 @@ pub fn docker_host() -> io::Result<String> {
     Ok(format!("unix://{}", endpoint("/")?.display()))
 }
 
+/// A GET to the engine at `sock`, not the one in use (a server's Test).
+pub fn get_at(sock: &std::path::Path, path: &str) -> io::Result<Value> {
+    let mut s = UnixStream::connect(sock)?;
+    s.set_read_timeout(Some(Duration::from_secs(20)))?;
+    write!(s, "GET {path} HTTP/1.1\r\nHost: kiri\r\nConnection: close\r\n\r\n")?;
+    let mut r = BufReader::new(s);
+    let (status, len, chunked) = head(&mut r)?;
+    let mut body = Vec::new();
+    if chunked {
+        while let Some(c) = chunk(&mut r)? {
+            body.extend_from_slice(&c);
+        }
+    } else if let Some(n) = len {
+        body.resize(n, 0);
+        r.read_exact(&mut body)?;
+    } else {
+        r.read_to_end(&mut body)?;
+    }
+    let resp = Response { status, body };
+    if resp.ok() { Ok(resp.json()) } else { Err(io::Error::other(resp.error())) }
+}
+
 /// Whether a Docker engine answers `/_ping` at `sock`.
 pub fn ping_at(sock: &std::path::Path) -> io::Result<()> {
     let mut s = UnixStream::connect(sock)?;

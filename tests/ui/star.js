@@ -1,4 +1,4 @@
-// Star Kiri is asked once: the first thing that works, after the settings
+// Star Kiri is off by default; once turned on it is asked once: the first thing that works, after the settings
 // are in and only if ui.json doesn't say it was asked; Star opens the repo.
 const R = [];
 const t = (name, fn) => { try { fn(); R.push("PASS " + name); } catch (e) { R.push("FAIL " + name + ": " + e.message); } };
@@ -11,8 +11,13 @@ t("already asked: never again", () => {
   kiri.on({ type: "k8sop", op: "start", state: "done", context: "kiri" });
   if (starTimer) throw new Error("asked twice");
 });
-t("the first success asks, once", () => {
+t("off by default: nothing asks until About turns it on", () => {
   prefs.starAsked = false;
+  kiri.on({ type: "pulled", name: "redis:7", ms: 1240 });
+  if (starTimer) throw new Error("asked while off");
+});
+t("the first success asks, once", () => {
+  prefs.starPrompt = true;
   kiri.on({ type: "pulled", name: "redis:7", ms: 1240 });
   const first = starTimer;
   kiri.on({ type: "share", id: 9, source: "web", state: "live", url: "https://web-x.runkiri.cloud" });

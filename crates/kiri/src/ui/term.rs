@@ -38,6 +38,11 @@ fn with<R>(f: impl FnOnce(&mut HashMap<String, Session>) -> R) -> R {
     f(SESSIONS.lock().unwrap_or_else(|e| e.into_inner()).get_or_insert_with(HashMap::new))
 }
 
+/// The shells open in the built-in terminal: tab id and pid, for the Processes view.
+pub fn pids() -> Vec<(String, i32)> {
+    with(|s| s.iter().filter(|(_, x)| !x.done.load(Ordering::Relaxed)).map(|(id, x)| (id.clone(), x.pid)).collect())
+}
+
 /// One `term` command from the page.
 pub fn handle(action: &str, id: &str, value: &Value, emit: fn(String)) {
     match action {

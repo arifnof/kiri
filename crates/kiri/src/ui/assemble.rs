@@ -23,9 +23,40 @@ const XTERM_CSS: &str = include_str!("xterm/xterm.css");
 /// each defining a global), in the order they load.
 const XTERM_JS: [&str; 4] = [include_str!("xterm/xterm.js"), include_str!("xterm/addon-fit.js"), include_str!("xterm/addon-search.js"), include_str!("xterm/addon-web-links.js")];
 
+/// Windows' page: without what only the Mac and Linux windows have (between
+/// `/*UNIX*/` and `/*/UNIX*/`, or `<!--UNIX-->` and `<!--/UNIX-->`: Servers,
+/// Processes and the engine switcher, which kiri-win has no side for), and
+/// with the stand-ins the shared code calls in their place (`/*WIN*` …
+/// `*WIN*/`, a comment everywhere else). It keeps WebView2's page well
+/// inside its limit for what Windows never shows.
+pub fn for_windows(index: &str) -> String {
+    let mut out = String::with_capacity(index.len());
+    let mut rest = index;
+    loop {
+        let next = [("/*UNIX*/", "/*/UNIX*/"), ("<!--UNIX-->", "<!--/UNIX-->")].into_iter().filter_map(|(a, b)| rest.find(a).map(|i| (i, a, b))).min_by_key(|x| x.0);
+        let Some((i, open, close)) = next else {
+            out.push_str(rest);
+            break;
+        };
+        out.push_str(&rest[..i]);
+        let after = &rest[i + open.len()..];
+        let end = after.find(close).unwrap_or(after.len());
+        rest = after.get(end + close.len()..).unwrap_or("");
+    }
+    out.replace("/*WIN*", "").replace("*WIN*/", "")
+}
+
 /// `index` (index.html) with everything spliced in, `lang` (the `lang`
-/// setting) picking its language.
+/// setting) picking its language. Windows' leaves out what only the Mac and
+/// Linux windows have ([`for_windows`]).
 pub fn page(index: &str, lang: Option<&str>) -> String {
+    let windows;
+    let index = if cfg!(windows) {
+        windows = for_windows(index);
+        windows.as_str()
+    } else {
+        index
+    };
     let mut js = String::with_capacity(XTERM_JS.iter().map(|s| s.len() + 1).sum());
     for part in XTERM_JS {
         js.push_str(part);
@@ -71,8 +102,9 @@ mod tests {
         // alone: the largest must stay well inside NavigateToString's 2 MB, with
         // room for the page to grow.
         let (mut worst, mut biggest) = (0, "");
+        let windows = super::for_windows(include_str!("index.html"));
         for (tag, _) in lang::FILES {
-            let p = super::page(include_str!("index.html"), Some(tag));
+            let p = super::page(&windows, Some(tag));
             assert!(p.contains(&lang::strings_js(tag)), "{tag}'s words missing");
             for (other, _) in lang::FILES {
                 assert!(other == tag || !p.contains(&format!("\"{other}\":[")), "{tag}'s page carries {other} too");
@@ -84,8 +116,22 @@ mod tests {
         // NavigateToString's limit is 2 MB; 1.8 M keeps a margin, and the worst
         // case stays 200 K under that (a language's words are about 60 K).
         assert!(worst + 200_000 < 1_800_000, "the page in {biggest} is {worst} UTF-16 units");
-        assert!(units(&page) <= worst);
+        assert!(units(&super::page(&windows, None)) <= worst);
         // Setup's page too.
         assert!(units(&super::words("/*LANG*/ /*STRINGS*/{}", Some(biggest))) < 200_000);
+    }
+
+    #[test]
+    fn windows_page_leaves_the_unix_only_parts_out_and_stands_in_for_them() {
+        let full = include_str!("index.html");
+        let win = super::for_windows(full);
+        for m in ["/*UNIX*/", "/*/UNIX*/", "<!--UNIX-->", "<!--/UNIX-->", "/*WIN*", "*WIN*/", "function renderServers() {\n", "id=\"engsw\"", "data-view=\"processes\""] {
+            assert!(!win.contains(m), "{m} left in Windows' page");
+        }
+        assert!(win.contains("function srvCur() { return null; }") && win.contains("const tasksItem = () => \"\";"));
+        assert!(full.contains("/*WIN*") && full.matches("/*UNIX*/").count() == full.matches("/*/UNIX*/").count());
+        assert!(win.len() + 30_000 < full.len(), "the cut is what Windows never shows");
+        // The rest is untouched: the shared views and the row polish stay.
+        assert!(win.contains("function renderNetworks()") && win.contains("td.actions .acts-row { gap: 2px; }"));
     }
 }

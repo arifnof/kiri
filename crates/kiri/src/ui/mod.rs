@@ -44,7 +44,9 @@ mod lastlogs;
 mod logins;
 mod weblogin;
 mod needs;
+mod activity;
 mod remote;
+mod secrets;
 mod sharing;
 mod usage;
 
@@ -223,7 +225,8 @@ fn engine(rx: Receiver<Cmd>, tx: Sender<Cmd>) {
         let _op = cmd.as_ref().ok().and_then(Cmd::op).map(|(kind, target)| {
             let op = diag::enter_op(diag::new_op(kind));
             diag::info!("action started", action = kind, target = target);
-            op
+            // The Processes view's task, for as long as the action runs.
+            (op, activity::begin(kind, &target))
         });
         match cmd {
             Ok(Cmd::Start | Cmd::Connect) if remote::current().is_some() => refresh(&mut connected),
@@ -506,7 +509,7 @@ fn trf(en: &str, vars: &[(&str, &dyn std::fmt::Display)]) -> String {
 }
 
 fn set_pref(name: &str, value: serde_json::Value) {
-    if !matches!(name, "font" | "mono" | "scale" | "termH" | "termFs" | "termFont" | "domainsAsked" | "theme" | "accent" | "importSeen" | "updateAuto" | "updateSkip" | "updateSnoozeUntil" | "columnWidths" | "crashReports" | "ctxSnooze" | "ctxBack" | "logSize" | "starAsked" | "setupSkip" | "lang" | "langAsked") {
+    if !matches!(name, "font" | "mono" | "scale" | "termH" | "termFs" | "termFont" | "domainsAsked" | "theme" | "accent" | "importSeen" | "updateAuto" | "updateSkip" | "updateSnoozeUntil" | "columnWidths" | "crashReports" | "ctxSnooze" | "ctxBack" | "logSize" | "starAsked" | "starPrompt" | "serversLayout" | "setupSkip" | "lang" | "langAsked") {
         return;
     }
     let Some(path) = prefs_path() else { return };
@@ -678,7 +681,8 @@ fn feed_check(manual: bool) {    // Kiri Dev is rebuilt from source, never updat
         emit(serde_json::json!({"type": "updateready", "version": v}).to_string());
         return;
     }
-    if !manual && prefs()["updateAuto"] == false {
+    // Off until the person turns it on (Settings → About).
+    if !manual && prefs()["updateAuto"] != true {
         return;
     }
     recheck::checked();
@@ -1253,6 +1257,7 @@ fn pull(name: String) {
     let op = diag::op();
     let spawned = std::thread::Builder::new().name("kiri-pull".into()).spawn(move || {
         let _op = op.map(diag::enter_op);
+        let _task = activity::begin("pull", name.trim());
         let reference = match kiri_image::Reference::parse(name.trim()) {
             Ok(r) => r.short(),
             Err(e) => return emit(notice("error", &e.to_string())),
@@ -1485,8 +1490,28 @@ fn handle(text: &str, tx: &Sender<Cmd>, autostart: bool, view: Option<&str>) {
                     emit(serde_json::json!({"type": "serversaved", "id": s.id}).to_string());
                     emit(remote::event(None));
                 }
-                Err(e) => emit(remote::event(Some((if id.is_empty() { "new" } else { &id }, &e.to_string())))),
+                Err(e) => emit(remote::event(Some((if id.is_empty() { "new" } else { &id }, &remote::Failed::from(e))))),
             }
+            Ok(())
+        }
+        // The form's Test: the bookmark as typed, without leaving the engine in use.
+        "servertest" => {
+            let form = msg.value;
+            std::thread::spawn(move || {
+                let host = form["host"].as_str().unwrap_or("").to_owned();
+                let _task = activity::begin("test", &host);
+                emit(match remote::test(&form) {
+                    Ok(info) => serde_json::json!({"type": "servertest", "ok": true, "info": info}),
+                    Err(e) => serde_json::json!({"type": "servertest", "ok": false, "error": e.text, "need": e.need}),
+                }.to_string());
+            });
+            Ok(())
+        }
+        // The form's eye button on a kept password: it, into the field.
+        "serversecret" => {
+            let jump = msg.name == "jump";
+            let secret = remote::secret(&msg.id, jump);
+            emit(serde_json::json!({"type": "serversecret", "id": msg.id, "which": msg.name, "secret": secret}).to_string());
             Ok(())
         }
         "serverdelete" => {
@@ -1497,19 +1522,39 @@ fn handle(text: &str, tx: &Sender<Cmd>, autostart: bool, view: Option<&str>) {
             emit(remote::event(None));
             if was { tx.send(Cmd::Refresh) } else { Ok(()) }
         }
+        // Passwords typed at Connect: `value` is {password, jump}, either may be empty.
         "serverconnect" => {
-            let (id, password, tx) = (msg.id, msg.value.as_str().map(str::to_owned), tx.clone());
+            let text = |k: &str| msg.value[k].as_str().map(str::to_owned).or_else(|| (k == "password").then(|| msg.value.as_str().map(str::to_owned)).flatten());
+            let creds = remote::Creds { password: text("password"), jump: text("jump"), remember: msg.value["remember"].as_str().map(str::to_owned) };
+            let (id, tx) = (msg.id, tx.clone());
             std::thread::spawn(move || {
                 let _op = diag::enter_op(diag::new_op("connect"));
+                let name = remote::load().into_iter().find(|s| s.id == id).map(|s| s.name).unwrap_or_default();
+                let _task = activity::begin("connect", &name);
                 emit(serde_json::json!({"type": "servers", "servers": remote::load(), "current": remote::current().map(|s| s.id), "connecting": id}).to_string());
-                let result = remote::connect(&id, password);
+                let result = remote::connect(&id, creds);
                 match &result {
                     Ok(s) => emit(notice("ok", &trf("Connected to {name}", &[("name", &s.name)]))),
-                    Err(e) => diag::warn!("server not reached", error = e),
+                    Err(e) if e.need.is_some() && e.text.is_empty() => {}
+                    Err(e) => diag::warn!("server not reached", error = e.text),
                 }
-                emit(remote::event(result.as_ref().err().map(|e| (id.as_str(), e.to_string())).as_ref().map(|(i, e)| (*i, e.as_str()))));
+                emit(remote::event(result.as_ref().err().map(|e| (id.as_str(), e))));
                 let _ = tx.send(Cmd::Refresh);
             });
+            Ok(())
+        }
+        // The Processes view, while it's open: Kiri's tasks, its processes
+        // here, and the processes in the running containers.
+        "tasks" => {
+            emit(activity::event());
+            Ok(())
+        }
+        "kiriprocs" => {
+            std::thread::spawn(|| emit(activity::processes().to_string()));
+            Ok(())
+        }
+        "procs" => {
+            std::thread::spawn(|| emit(activity::container_procs().to_string()));
             Ok(())
         }
         "serverdisconnect" => {

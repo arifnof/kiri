@@ -98,16 +98,26 @@ usage: kiri COMMAND          docker's commands, on Kiri: kiri run, ps, exec,
        kiri raw pull <image> | raw images | raw rmi <image>...";
 
 fn main() -> ExitCode {
-    // ssh asking for the password of a server the window connects to
-    // (ui/remote.rs): the answer is in this process's environment only.
+    // ssh asking for a password of a server the window connects to, or of
+    // its jump host (ui/remote.rs): the answers are in this process's
+    // environment only.
     #[cfg(unix)]
-    if let (Ok(secret), Some(_)) = (std::env::var("KIRI_SSH_SECRET"), std::env::var_os("SSH_ASKPASS_REQUIRE")) {
-        // Only a password: never a yes to a question about the host's key.
-        if std::env::args().nth(1).is_some_and(|q| q.contains("yes/no")) {
+    if std::env::var_os("SSH_ASKPASS_REQUIRE").is_some() && (std::env::var_os("KIRI_SSH_SECRET").is_some() || std::env::var_os("KIRI_SSH_JUMP_SECRET").is_some()) {
+        let question = std::env::args().nth(1).unwrap_or_default();
+        // Only a password: never a yes to a question about a host's key.
+        if question.contains("yes/no") {
             return ExitCode::FAILURE;
         }
-        println!("{secret}");
-        return ExitCode::SUCCESS;
+        // "ops@bastion's password:" or "(ops@bastion) Password:" is the jump host's.
+        let jump = std::env::var("KIRI_SSH_JUMP_HOST").ok().filter(|h| question.contains(&format!("@{h}'s")) || question.contains(&format!("@{h})")));
+        let answer = if jump.is_some() { std::env::var("KIRI_SSH_JUMP_SECRET") } else { std::env::var("KIRI_SSH_SECRET") };
+        return match answer {
+            Ok(secret) => {
+                println!("{secret}");
+                ExitCode::SUCCESS
+            }
+            Err(_) => ExitCode::FAILURE,
+        };
     }
     flavor::init();
     let args: Vec<String> = std::env::args().skip(1).collect();
